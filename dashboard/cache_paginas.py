@@ -41,27 +41,44 @@ def em_cache(view):
 
 # Páginas montadas assim que o servidor liga, antes da primeira visita:
 # cada aba sem filtro e com o filtro da Paraíba.
+# As duas primeiras são montadas antes de aceitar visitas: juntas, usam todos os
+# tipos de gráfico do painel, então importam tudo que as outras páginas precisam.
 PAGINAS_INICIAIS = [
-    "/", "/?uf=PB",
-    "/condicoes/", "/trechos/", "/vitimas/", "/estrutura/", "/anos/",
+    "/", "/condicoes/",
+    "/?uf=PB", "/trechos/", "/vitimas/", "/estrutura/", "/anos/",
     "/condicoes/?uf=PB", "/trechos/?uf=PB", "/vitimas/?uf=PB", "/estrutura/?uf=PB", "/anos/?uf=PB",
 ]
 
 
-def aquecer():
-    """Carrega os dados e monta as páginas principais (roda em segundo plano)."""
+def montar(url, fabrica):
+    try:
+        resolve(url.split("?")[0]).func(fabrica.get(url))
+    except Exception as erro:  # uma página com problema não impede as outras
+        print(f"[aquecer] {url}: {erro}", flush=True)
+
+
+def aquecer_restante(fabrica):
+    """Carrega os outros anos e monta as demais páginas (roda em segundo plano)."""
     from .dados import carregar_todos
 
     carregar_todos()
-    fabrica = RequestFactory()
-    for url in PAGINAS_INICIAIS:
-        try:
-            caminho = url.split("?")[0]
-            resolve(caminho).func(fabrica.get(url))
-        except Exception as erro:  # uma página com problema não impede as outras
-            print(f"[aquecer] {url}: {erro}", flush=True)
+    for url in PAGINAS_INICIAIS[2:]:
+        montar(url, fabrica)
     print(f"[aquecer] {len(PAGINAS_INICIAIS)} páginas prontas", flush=True)
 
 
-def aquecer_em_segundo_plano():
-    threading.Thread(target=aquecer, name="aquecer-cache", daemon=True).start()
+def aquecer():
+    """
+    Chamado quando o servidor liga (config/wsgi.py).
+
+    1. Antes de aceitar visitas: importa todos os módulos (URLs, pandas, Plotly) e
+       monta as duas primeiras páginas. Isso PRECISA ser feito aqui, e não numa thread:
+       se uma visita chegar enquanto outra thread ainda está importando os mesmos
+       módulos, o Python trava as duas (deadlock de importação). Num servidor lento
+       como o plano gratuito do Render, as importações levam vários segundos.
+    2. Depois, numa thread: o resto das páginas, com tudo já importado.
+    """
+    fabrica = RequestFactory()
+    for url in PAGINAS_INICIAIS[:2]:
+        montar(url, fabrica)
+    threading.Thread(target=aquecer_restante, args=(fabrica,), name="aquecer-cache", daemon=True).start()
