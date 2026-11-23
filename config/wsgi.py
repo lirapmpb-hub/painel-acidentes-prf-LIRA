@@ -15,8 +15,10 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
 application = get_wsgi_application()
 
-# Já carrega os dados e monta as páginas principais assim que o servidor liga,
-# em vez de esperar a primeira visita (ver dashboard/cache_paginas.py).
-from dashboard.cache_paginas import aquecer  # noqa: E402
+# Importa já as URLs e as telas do painel (pandas, Plotly), em vez de deixar
+# para a primeira visita. Com o gunicorn em --preload (ver render.yaml), isto
+# acontece uma vez só, antes de o servidor abrir a porta para as visitas.
+from django.urls import get_resolver  # noqa: E402
 
-aquecer()
+get_resolver().url_patterns
+import dashboard.views  # noqa: E402, F401

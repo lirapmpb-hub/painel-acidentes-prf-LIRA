@@ -52,7 +52,6 @@ MIDDLEWARE = [
     'django.middleware.gzip.GZipMiddleware',  # comprime as páginas (a Visão geral cai de ~450 kB para ~120 kB)
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',  # serve o brasão e outros estáticos em produção
-    'dashboard.cache_paginas.EsperarAquecimento',  # segura as visitas enquanto o servidor liga
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -140,6 +139,19 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'  # para onde o collectstatic copia os arq
 STORAGES = {
     'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
     'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+}
+
+
+# Registros: em produção o Django não mostra os erros na tela, então eles vão
+# para o log do servidor (aparecem na aba Logs do Render).
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'console': {'class': 'logging.StreamHandler'}},
+    'loggers': {
+        'django.request': {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
+        'django.security': {'handlers': ['console'], 'level': 'ERROR', 'propagate': False},
+    },
 }
 
 
