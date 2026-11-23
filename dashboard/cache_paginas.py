@@ -50,6 +50,33 @@ PAGINAS_INICIAIS = [
 ]
 
 
+# Sinal de "pode atender": fica desligado enquanto o aquecimento importa os módulos.
+# Começa ligado, para o painel funcionar normalmente quando não há aquecimento
+# (testes, manage.py, etc.).
+_modulos_prontos = threading.Event()
+_modulos_prontos.set()
+ESPERA_MAXIMA = 600  # segundos
+
+
+class EsperarAquecimento:
+    """
+    Middleware: segura as visitas até o aquecimento terminar de importar os módulos.
+
+    Sem isto, uma visita que chega enquanto a thread de aquecimento ainda importa
+    pandas, Plotly e as URLs tenta importar os mesmos módulos ao mesmo tempo, e o
+    Python trava as duas threads (deadlock de importação). No plano gratuito do
+    Render, com 0,1 CPU, essas importações levam bem mais que no computador.
+    Fica depois do WhiteNoise, então o brasão e os outros estáticos não esperam.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        _modulos_prontos.wait(ESPERA_MAXIMA)
+        return self.get_response(request)
+
+
 def montar(url, fabrica):
     try:
         resolve(url.split("?")[0]).func(fabrica.get(url))
@@ -57,8 +84,16 @@ def montar(url, fabrica):
         print(f"[aquecer] {url}: {erro}", flush=True)
 
 
-def aquecer_restante(fabrica):
-    """Carrega os outros anos e monta as demais páginas (roda em segundo plano)."""
+def _aquecer():
+    fabrica = RequestFactory()
+    try:
+        # As duas primeiras páginas importam tudo que as outras usam
+        for url in PAGINAS_INICIAIS[:2]:
+            montar(url, fabrica)
+    finally:
+        _modulos_prontos.set()  # libera as visitas, mesmo se algo deu errado
+    print("[aquecer] módulos importados, atendendo visitas", flush=True)
+
     from .dados import carregar_todos
 
     carregar_todos()
@@ -69,16 +104,9 @@ def aquecer_restante(fabrica):
 
 def aquecer():
     """
-    Chamado quando o servidor liga (config/wsgi.py).
-
-    1. Antes de aceitar visitas: importa todos os módulos (URLs, pandas, Plotly) e
-       monta as duas primeiras páginas. Isso PRECISA ser feito aqui, e não numa thread:
-       se uma visita chegar enquanto outra thread ainda está importando os mesmos
-       módulos, o Python trava as duas (deadlock de importação). Num servidor lento
-       como o plano gratuito do Render, as importações levam vários segundos.
-    2. Depois, numa thread: o resto das páginas, com tudo já importado.
+    Chamado quando o servidor liga (config/wsgi.py). Roda tudo em segundo plano,
+    para o servidor ligar na hora (o gunicorn derruba um processo que demora
+    demais para ligar). As visitas que chegarem antes esperam no middleware acima.
     """
-    fabrica = RequestFactory()
-    for url in PAGINAS_INICIAIS[:2]:
-        montar(url, fabrica)
-    threading.Thread(target=aquecer_restante, args=(fabrica,), name="aquecer-cache", daemon=True).start()
+    _modulos_prontos.clear()
+    threading.Thread(target=_aquecer, name="aquecer-cache", daemon=True).start()

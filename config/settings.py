@@ -52,6 +52,7 @@ MIDDLEWARE = [
     'django.middleware.gzip.GZipMiddleware',  # comprime as páginas (a Visão geral cai de ~450 kB para ~120 kB)
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',  # serve o brasão e outros estáticos em produção
+    'dashboard.cache_paginas.EsperarAquecimento',  # segura as visitas enquanto o servidor liga
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
