@@ -1,0 +1,29 @@
+{% extends "dashboard/base.html" %}
+{% block titulo %}Trechos críticos{% endblock %}
+
+{% block conteudo %}
+    <section class="cartao">
+        <h2 class="titulo-secao">Trechos críticos</h2>
+        <p class="mt-2 text-sm text-pm-preto/80">
+            Cada rodovia foi dividida em trechos de 10 km, dentro de cada estado (a quilometragem recomeça na divisa).
+            Neste filtro há <b>{{ resumo.trechos }}</b> trechos com acidentes, <b>{{ resumo.com_morte }}</b> deles com mortes.
+            Os 20 trechos mais letais concentram <b class="text-pm-vermelho-escuro">{{ resumo.concentracao }}</b> dos {{ resumo.mortos }} mortos.
+        </p>
+    </section>
+
+    {% if perfil %}
+        {% include "dashboard/_painel.html" with p=perfil %}
+    {% else %}
+        <p class="rounded-md border border-dashed border-pm-cinza-medio bg-white/60 p-4 text-sm text-pm-cinza">
+            Escolha um <b class="text-pm-preto">estado</b> e uma <b class="text-pm-preto">rodovia</b> nos filtros para ver o perfil da BR ao longo dos quilômetros.
+        </p>
+    {% endif %}
+
+    {% include "dashboard/_painel.html" with p=mapa %}
+
+    <section class="cartao">
+        <h2 class="titulo-secao">Ranking dos trechos</h2>
+        <p class="subtitulo">Os 20 primeiros · clique no trecho para abrir a Visão geral só com ele (mapa, causas, horários)</p>
+        {% include "dashboard/_tabela.html" with t=tabela %}
+    </section>
+{% endblock %}

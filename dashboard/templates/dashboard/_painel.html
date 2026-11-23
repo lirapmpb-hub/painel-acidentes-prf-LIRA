@@ -1,0 +1,6 @@
+<!-- Quadro com título, subtítulo e gráfico. Uso: include com p=painel (ver views.painel) -->
+<div class="cartao">
+    <h2 class="titulo-secao">{{ p.titulo }}</h2>
+    {% if p.subtitulo %}<p class="subtitulo">{{ p.subtitulo }}</p>{% endif %}
+    <div class="mt-3">{{ p.html|safe }}</div>
+</div>

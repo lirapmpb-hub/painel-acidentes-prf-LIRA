@@ -1,0 +1,18 @@
+# Configuração do site no Render (https://render.com), lida automaticamente
+# quando o repositório é conectado como "Blueprint".
+services:
+  - type: web
+    name: painel-acidentes-prf
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    # Um processo só: os 4 anos de dados ocupam ~310 MB e o plano gratuito tem 512 MB.
+    # As threads atendem várias visitas ao mesmo tempo, compartilhando os dados já carregados.
+    startCommand: gunicorn config.wsgi:application --workers 1 --threads 4 --timeout 180
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.14.0"
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true

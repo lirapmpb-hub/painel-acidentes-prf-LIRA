@@ -1,0 +1,36 @@
+{% extends "dashboard/base.html" %}
+{% block titulo %}Condições{% endblock %}
+
+{% block conteudo %}
+    <section class="cartao">
+        <h2 class="titulo-secao">Em que condições os acidentes matam mais</h2>
+        <p class="mt-2 text-sm text-pm-preto/80">
+            Em cada gráfico, as barras escuras mostram <b>quantos acidentes</b> aconteceram e as da direita mostram
+            <b>quantos mortos a cada 100 acidentes</b>. Barras vermelhas estão acima da média deste filtro
+            (<b>{{ media }}</b>, a linha pontilhada); as cinzas estão abaixo.
+        </p>
+    </section>
+
+    {% if destaques %}
+    <!-- Destaques: a categoria mais letal de cada condição -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for d in destaques %}
+        <div class="bg-white rounded-md shadow-sm border border-pm-cinza-claro/70 border-t-4 border-t-pm-vermelho p-5">
+            <p class="font-titulo text-xs font-bold uppercase tracking-wide text-pm-cinza">{{ d.titulo }}: a mais letal</p>
+            <p class="mt-1 font-titulo text-2xl font-black text-pm-preto">{{ d.valor }}</p>
+            <p class="mt-1 text-sm text-pm-preto/80">{{ d.texto }}</p>
+            <p class="text-xs text-pm-cinza">{{ d.detalhe }}</p>
+        </div>
+        {% endfor %}
+    </section>
+    <p class="-mt-3 text-xs text-pm-cinza">Só entram nos destaques categorias com pelo menos {{ minimo }} acidentes, para evitar conclusões a partir de poucos casos.</p>
+    {% endif %}
+
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        {% for p in paineis %}
+        {% include "dashboard/_painel.html" with p=p %}
+        {% endfor %}
+    </section>
+
+    {% include "dashboard/_painel.html" with p=painel_causas %}
+{% endblock %}

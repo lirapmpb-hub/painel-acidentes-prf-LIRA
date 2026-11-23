@@ -1,0 +1,28 @@
+{% extends "dashboard/base.html" %}
+{% block titulo %}Estrutura PRF{% endblock %}
+
+{% block conteudo %}
+    <section class="cartao">
+        <h2 class="titulo-secao">Onde está a carga de trabalho da PRF</h2>
+        <p class="mt-2 text-sm text-pm-preto/80">
+            A PRF se organiza em <b>regionais</b> (superintendências), que se dividem em <b>delegacias</b>,
+            que por sua vez têm <b>unidades operacionais (UOPs)</b>, os postos nas rodovias.
+            Use o filtro avançado "Regional da PRF" para olhar só uma regional.
+        </p>
+    </section>
+
+    {% include "dashboard/_painel.html" with p=regionais %}
+
+    <section class="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
+        <div class="cartao">
+            <h2 class="titulo-secao">Delegacias</h2>
+            <p class="subtitulo">As 20 primeiras · clique para filtrar o painel pela delegacia</p>
+            {% include "dashboard/_tabela.html" with t=delegacias %}
+        </div>
+        <div class="cartao">
+            <h2 class="titulo-secao">Unidades operacionais (UOPs)</h2>
+            <p class="subtitulo">As 20 primeiras</p>
+            {% include "dashboard/_tabela.html" with t=uops %}
+        </div>
+    </section>
+{% endblock %}

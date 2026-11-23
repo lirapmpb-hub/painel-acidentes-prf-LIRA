@@ -1,0 +1,207 @@
+{% load static %}<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block titulo %}Painel{% endblock %} · Acidentes nas Rodovias Federais - PRF {{ ano_atual }}</title>
+    <link rel="icon" type="image/png" href="{% static 'dashboard/brasao-pmpb.png' %}">
+
+    <!-- Fonte dos títulos: o MIV da PMPB usa a Gilroy Black (paga); a Montserrat é a
+         alternativa gratuita mais próxima. Textos corridos em Arial, como na papelaria do MIV. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS via CDN: as classes nos elementos abaixo definem o visual -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Cores oficiais do Manual de Identidade Visual da PMPB (seção 2.6 e 6.1.4)
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        pm: {
+                            preto: "#1d1d1b",
+                            vermelho: "#e30613",
+                            "vermelho-escuro": "#b3050f",
+                            cinza: "#706f6f",
+                            "cinza-medio": "#9d9d9d",
+                            "cinza-claro": "#c6c6c6",
+                            fundo: "#f3f3f3",
+                            verde: "#009640",
+                            amarelo: "#ffed00",
+                        },
+                    },
+                    fontFamily: {
+                        titulo: ["Montserrat", "Arial", "sans-serif"],
+                        sans: ["Arial", "Helvetica", "sans-serif"],
+                    },
+                },
+            },
+        };
+    </script>
+    <style type="text/tailwindcss">
+        @layer components {
+            /* Quadro branco padrão do painel */
+            .cartao { @apply bg-white rounded-md shadow-sm border border-pm-cinza-claro/70 p-5 min-w-0; }
+            /* Título de seção do MIV: texto preto com filete preto + vermelho embaixo */
+            .titulo-secao { @apply relative pb-2 mb-1 font-titulo text-base font-bold text-pm-preto; }
+            .titulo-secao::after {
+                content: ""; position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; max-width: 22rem;
+                background: linear-gradient(to right, #1d1d1b 0 30%, #e30613 30% 100%);
+            }
+            .subtitulo { @apply text-sm text-pm-cinza; }
+            .campo { @apply w-full rounded border border-pm-cinza-claro bg-white px-3 py-2 text-sm text-pm-preto focus:border-pm-vermelho focus:outline-none focus:ring-2 focus:ring-pm-vermelho/20 disabled:bg-pm-fundo disabled:text-pm-cinza-medio; }
+            .rotulo { @apply block text-xs font-titulo font-semibold uppercase tracking-wide text-pm-cinza mb-1; }
+        }
+        /* Faixa vermelha com o "degrau" diagonal da capa do MIV */
+        .faixa-pmpb { height: 10px; background: #e30613;
+            clip-path: polygon(0 40%, 42% 40%, 45% 0, 100% 0, 100% 100%, 0 100%); }
+        .faixa-pmpb-invertida { height: 10px; background: #e30613;
+            clip-path: polygon(0 0, 55% 0, 58% 60%, 100% 60%, 100% 100%, 0 100%); }
+    </style>
+
+    <!-- Plotly: biblioteca dos gráficos, carregada uma vez para a página toda -->
+    <script src="{{ plotly_js }}" charset="utf-8"></script>
+</head>
+<body class="bg-pm-fundo text-pm-preto font-sans antialiased">
+
+    <!-- Cabeçalho no padrão do MIV: faixa preta, brasão, dístico e faixa vermelha -->
+    <header class="bg-pm-preto text-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-5">
+            <div class="flex items-center gap-4 sm:gap-5">
+                <img src="{% static 'dashboard/brasao-pmpb.png' %}" alt="Brasão da Polícia Militar da Paraíba" class="h-16 sm:h-20 w-auto shrink-0">
+                <div class="min-w-0">
+                    <p class="font-titulo text-xs sm:text-sm font-extrabold uppercase leading-tight tracking-wide">Polícia Militar da Paraíba</p>
+                    <h1 class="mt-1 font-titulo text-xl sm:text-3xl font-black leading-tight">Painel de Acidentes nas Rodovias Federais</h1>
+                    <p class="mt-1 text-xs text-pm-cinza-claro">Dados abertos da Polícia Rodoviária Federal · {{ ano_atual }}</p>
+                </div>
+            </div>
+
+            <p class="mt-4 text-sm text-pm-cinza-claro">Exibindo: <span class="font-bold text-white">{{ local }}</span> · {{ texto_periodo }} · {{ descricao_filtro }}</p>
+            {% if trecho is not None %}
+            <p class="mt-2">
+                <a href="{{ link_sem_trecho }}" class="inline-flex items-center gap-2 rounded-full bg-pm-vermelho px-3 py-1 text-xs font-bold text-white hover:bg-pm-vermelho-escuro">
+                    Trecho: BR-{{ br }}, km {{ trecho }} a {{ trecho_fim }} <span aria-hidden="true">✕</span><span class="sr-only">tirar o filtro de trecho</span>
+                </a>
+            </p>
+            {% endif %}
+
+            <!-- Abas: cada link mantém os filtros atuais -->
+            <nav class="mt-5 flex items-end justify-between gap-4">
+                <div class="flex gap-1 overflow-x-auto">
+                    {% for item in abas %}
+                    <a href="{{ item.url }}" class="whitespace-nowrap rounded-t px-4 py-2 font-titulo text-sm font-bold {% if item.ativa %}bg-pm-fundo text-pm-preto border-t-[3px] border-pm-vermelho{% else %}text-pm-cinza-claro hover:bg-white/10 hover:text-white border-t-[3px] border-transparent{% endif %}">{{ item.titulo }}</a>
+                    {% endfor %}
+                </div>
+                <a href="{{ link_exportar }}" class="mb-2 hidden sm:inline-block whitespace-nowrap rounded border border-pm-cinza px-3 py-1.5 text-xs font-bold text-white hover:border-pm-vermelho hover:bg-pm-vermelho" title="Baixa os acidentes do filtro atual, com as 30 colunas da PRF">Baixar CSV</a>
+            </nav>
+        </div>
+    </header>
+    <div class="faixa-pmpb" aria-hidden="true"></div>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+        <!-- FILTROS: ao clicar em Filtrar, a página recarrega com as escolhas na URL -->
+        <form method="get" action="" class="cartao grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+            <div class="lg:col-span-2">
+                <label for="uf" class="rotulo">Estado</label>
+                <!-- onchange: ao trocar o estado, recarrega para mostrar os municípios e BRs dele -->
+                <select id="uf" name="uf" onchange="this.form.submit()" class="campo">
+                    <option value="">Todos os estados</option>
+                    {% for nome, sigla in estados %}
+                    <option value="{{ sigla }}" {% if sigla == uf %}selected{% endif %}>{{ nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="lg:col-span-3">
+                <label for="municipio" class="rotulo">Município</label>
+                <select id="municipio" name="municipio" {% if not municipios %}disabled{% endif %} class="campo">
+                    <option value="">{% if uf %}Todos os municípios{% else %}Escolha um estado antes{% endif %}</option>
+                    {% for nome in municipios %}
+                    <option value="{{ nome }}" {% if nome == municipio %}selected{% endif %}>{{ nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="lg:col-span-1">
+                <label for="br" class="rotulo">Rodovia</label>
+                <select id="br" name="br" class="campo !px-2">
+                    <option value="">Todas</option>
+                    {% for numero in rodovias %}
+                    <option value="{{ numero }}" {% if numero == br %}selected{% endif %}>BR-{{ numero }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="lg:col-span-2">
+                <label for="classificacao" class="rotulo">Gravidade</label>
+                <select id="classificacao" name="classificacao" class="campo">
+                    <option value="">Todos os acidentes</option>
+                    {% for nome in classificacoes %}
+                    <option value="{{ nome }}" {% if nome == classificacao %}selected{% endif %}>{{ nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="lg:col-span-1">
+                <label for="mes_inicio" class="rotulo">De</label>
+                <select id="mes_inicio" name="mes_inicio" class="campo !px-2">
+                    {% for numero, nome in meses %}
+                    <option value="{{ numero }}" {% if numero == mes_inicio %}selected{% endif %}>{{ nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="lg:col-span-1">
+                <label for="mes_fim" class="rotulo">Até</label>
+                <select id="mes_fim" name="mes_fim" class="campo !px-2">
+                    {% for numero, nome in meses %}
+                    <option value="{{ numero }}" {% if numero == mes_fim %}selected{% endif %}>{{ nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="lg:col-span-2 flex gap-2">
+                <button type="submit" class="flex-1 rounded bg-pm-vermelho px-4 py-2 font-titulo text-sm font-bold uppercase tracking-wide text-white hover:bg-pm-vermelho-escuro">Filtrar</button>
+                {% if filtro_ativo %}
+                <a href="{{ link_limpar }}" class="rounded border border-pm-preto px-3 py-2 font-titulo text-sm font-bold text-pm-preto hover:bg-pm-preto hover:text-white">Limpar</a>
+                {% endif %}
+            </div>
+
+            <!-- FILTROS AVANÇADOS: abrem e fecham; já vêm abertos se algum estiver em uso -->
+            <details class="sm:col-span-2 lg:col-span-12 border-t border-pm-cinza-claro/60 pt-3" {% if avancados_ativos %}open{% endif %}>
+                <summary class="cursor-pointer select-none font-titulo text-sm font-bold text-pm-cinza hover:text-pm-vermelho">
+                    Filtros avançados{% if avancados_ativos %} <span class="ml-1 rounded-full bg-pm-vermelho px-2 py-0.5 text-xs text-white">{{ avancados_ativos }}</span>{% endif %}
+                </summary>
+                <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+                    {% for campo in avancados %}
+                    <div>
+                        <label for="{{ campo.nome }}" class="rotulo">{{ campo.rotulo }}</label>
+                        <select id="{{ campo.nome }}" name="{{ campo.nome }}" {% if campo.recarrega %}onchange="this.form.submit()"{% endif %} {% if campo.desativado %}disabled{% endif %} class="campo">
+                            <option value="">{{ campo.vazio }}</option>
+                            {% for opcao in campo.opcoes %}
+                            <option value="{{ opcao }}" {% if opcao == campo.valor %}selected{% endif %}>{{ opcao }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endfor %}
+                </div>
+            </details>
+        </form>
+
+        {% block conteudo %}{% endblock %}
+    </main>
+
+    <!-- Rodapé no padrão do slide de fechamento do MIV -->
+    <footer class="mt-4">
+        <div class="faixa-pmpb-invertida" aria-hidden="true"></div>
+        <div class="bg-pm-preto text-pm-cinza-claro">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row sm:items-center gap-4">
+                <img src="{% static 'dashboard/brasao-pmpb.png' %}" alt="" class="h-12 w-auto self-start sm:self-center">
+                <div class="text-xs leading-relaxed">
+                    <p class="font-titulo text-sm font-black uppercase text-white">Polícia Militar da Paraíba</p>
+                    <p>Fonte: Polícia Rodoviária Federal, arquivos datatran (acidentes nas rodovias federais).
+                        <a href="{{ link_exportar }}" class="font-bold text-white underline decoration-pm-vermelho decoration-2 underline-offset-4 hover:text-pm-vermelho">Baixar os acidentes deste filtro em CSV</a>.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

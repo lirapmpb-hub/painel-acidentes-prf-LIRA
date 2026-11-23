@@ -1,0 +1,12 @@
+<!-- CARTÕES DE MÉTRICAS (KPIs). Uso: include com kpis=lista e, opcional, colunas="lg:grid-cols-3" -->
+<section class="grid grid-cols-1 sm:grid-cols-2 {{ colunas|default:'lg:grid-cols-4' }} gap-4">
+    {% for kpi in kpis %}
+    <div class="bg-white rounded-md shadow-sm border border-pm-cinza-claro/70 border-t-4 p-5" style="border-top-color: {{ kpi.cor }}">
+        <p class="font-titulo text-xs font-bold uppercase tracking-wide text-pm-cinza">{{ kpi.titulo }}</p>
+        <p class="mt-2 font-titulo text-4xl font-black text-pm-preto tabular-nums">{{ kpi.valor }}</p>
+        <p class="mt-2 text-sm text-pm-preto/80">{{ kpi.media }}</p>
+        {% if kpi.comparacao %}<p class="text-sm text-pm-preto/80">{{ kpi.comparacao }}</p>{% endif %}
+        {% if kpi.explicacao %}<p class="mt-2 text-xs text-pm-cinza">{{ kpi.explicacao }}</p>{% endif %}
+    </div>
+    {% endfor %}
+</section>

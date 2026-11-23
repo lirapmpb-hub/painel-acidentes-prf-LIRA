@@ -1,0 +1,12 @@
+{% extends "dashboard/base.html" %}
+{% block titulo %}Vítimas{% endblock %}
+
+{% block conteudo %}
+    {% include "dashboard/_cartoes.html" with kpis=kpis colunas="lg:grid-cols-3" %}
+
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        {% for p in paineis %}
+        {% include "dashboard/_painel.html" with p=p %}
+        {% endfor %}
+    </section>
+{% endblock %}

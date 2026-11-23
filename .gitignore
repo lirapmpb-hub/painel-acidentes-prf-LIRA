@@ -1,0 +1,15 @@
+# Ambiente virtual e caches do Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Banco local (o painel não usa) e arquivos gerados no deploy
+db.sqlite3
+staticfiles/
+
+# Editor e sistema
+.vscode/
+.idea/
+*.log
+.env
