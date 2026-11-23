@@ -1,0 +1,10 @@
+<!-- RESUMO EXECUTIVO: frases geradas a partir dos números (ver decisao.resumo_executivo).
+     Uso: include com frases=lista e, opcional, titulo="..." -->
+<section class="cartao border-l-4 border-l-pm-vermelho">
+    <h2 class="titulo-secao">{{ titulo|default:"Resumo para decisão" }}</h2>
+    <ul class="mt-3 space-y-2 text-sm leading-relaxed text-pm-preto">
+        {% for frase in frases %}
+        <li class="flex gap-2"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-pm-vermelho" aria-hidden="true"></span><span>{{ frase }}</span></li>
+        {% endfor %}
+    </ul>
+</section>

@@ -8,6 +8,7 @@ from functools import wraps
 from html import escape
 from math import log2
 
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.colors import sample_colorscale
@@ -171,7 +172,7 @@ def grafico_mapa(pontos):
 
 
 @protegido
-def grafico_calor(tabela):
+def grafico_calor(tabela, unidade="acidentes", legenda="Acidentes"):
     """MAPA DE CALOR - dia da semana (linhas) x hora do dia (colunas)."""
     if tabela.to_numpy().sum() == 0:
         return None
@@ -183,11 +184,11 @@ def grafico_calor(tabela):
         aspect="auto",
     )
     fig.update_traces(xgap=2, ygap=2,
-                      hovertemplate="%{y}, %{x}<br>%{z:,.0f} acidentes<extra></extra>")
+                      hovertemplate="%{y}, %{x}<br>%{z:,.0f} " + unidade + "<extra></extra>")
     fig.update_xaxes(title=None, side="bottom", tickangle=0, dtick=2)
     fig.update_yaxes(title=None)
     estilo_padrao(fig, altura=340)
-    fig.update_layout(coloraxis_colorbar={"title": {"text": "Acidentes"}, "thickness": 12})
+    fig.update_layout(coloraxis_colorbar={"title": {"text": legenda}, "thickness": 12})
     return fig
 
 
@@ -383,6 +384,106 @@ def grafico_anos(tabela, valor, nome):
     fig.update_xaxes(title=None)
     fig.update_yaxes(title=None, tickformat=",.0f", rangemode="tozero")
     return estilo_padrao(fig, altura=340, legenda=True)
+
+
+# =============================================================================
+# Apoio à decisão (Onde agir, Ficha do trecho, Metas e avaliação)
+# =============================================================================
+# Do transparente ao vermelho escuro: as áreas sem acidentes ficam com o mapa limpo
+ESCALA_DENSIDADE = [[0, "rgba(227,6,19,0)"], [0.15, "rgba(246,165,169,0.6)"],
+                    [0.5, "rgba(227,6,19,0.85)"], [1, "#7a030a"]]
+
+
+@protegido
+def grafico_densidade(grade, raio):
+    """MAPA DE CALOR GEOGRÁFICO - mancha mais escura onde a gravidade (UPS) é maior."""
+    if grade.empty or grade["ups"].sum() == 0:
+        return None
+    fig = px.density_map(
+        grade, lat="latitude", lon="longitude", z="ups", radius=raio,
+        custom_data=["acidentes", "mortos", "ups"],
+        color_continuous_scale=ESCALA_DENSIDADE,
+        zoom=zoom_do_mapa(grade),
+        center={"lat": grade["latitude"].median(), "lon": grade["longitude"].median()},
+        map_style="carto-positron",
+    )
+    fig.update_traces(hovertemplate=("%{customdata[0]:,.0f} acidentes · %{customdata[1]:,.0f} mortos"
+                                     "<br>Gravidade: %{customdata[2]:,.0f} UPS<extra></extra>"))
+    estilo_padrao(fig, altura=520)
+    fig.update_layout(margin={"l": 0, "r": 0, "t": 0, "b": 0}, coloraxis_showscale=False)
+    return fig
+
+
+@protegido
+def grafico_grupos(grupos):
+    """BARRAS - parte da gravidade de cada grupo de causas (quem pode agir)."""
+    grupos = [g for g in grupos if g["ups"] > 0]
+    if not grupos:
+        return None
+    grupos = grupos[::-1]  # o maior fica no topo
+    fig = go.Figure(go.Bar(
+        x=[g["parte_num"] for g in grupos], y=[g["grupo"] for g in grupos], orientation="h",
+        marker_color=[g["cor"] for g in grupos],
+        customdata=[[g["quem"], g["acidentes"], g["mortos"]] for g in grupos],
+        text=[f"{g['parte']} · {g['mortos']:,} mortos".replace(",", ".") for g in grupos],
+        textposition="outside", cliponaxis=False,
+        hovertemplate=("%{y}: %{x:.1f}% da gravidade<br>%{customdata[1]:,.0f} acidentes · "
+                       "%{customdata[2]:,.0f} mortos<br>Quem age: %{customdata[0]}<extra></extra>"),
+    ))
+    fig.update_xaxes(title=None, showticklabels=False, showgrid=False,
+                     range=[0, max(g["parte_num"] for g in grupos) * 1.45])
+    fig.update_yaxes(title=None)
+    estilo_padrao(fig, altura=max(240, 42 * len(grupos) + 40))
+    fig.update_layout(margin={"r": 20})
+    return fig
+
+
+@protegido
+def grafico_meta(tabela, nome, ano, ano_base):
+    """LINHAS ACUMULADAS - ano atual x ano base x meta. Colunas: mes, atual, base, meta (acumulados)."""
+    if tabela["base"].sum() == 0 and tabela["atual"].sum() == 0:
+        return None
+    x = [MESES[m - 1] for m in tabela["mes"]]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=tabela["base"], name=f"{ano_base}", mode="lines",
+                             line={"color": CINZA, "width": 2},
+                             hovertemplate="%{x}: %{y:,.0f} " + nome + f" em {ano_base}<extra></extra>"))
+    fig.add_trace(go.Scatter(x=x, y=tabela["meta"], name="Meta", mode="lines",
+                             line={"color": VERDE, "width": 2, "dash": "dash"},
+                             hovertemplate="%{x}: meta de até %{y:,.0f}<extra></extra>"))
+    fig.add_trace(go.Scatter(x=x, y=tabela["atual"], name=f"{ano}", mode="lines+markers",
+                             line={"color": VERMELHO, "width": 3},
+                             marker={"size": 7, "line": {"color": "white", "width": 1}},
+                             hovertemplate="%{x}: %{y:,.0f} " + nome + f" em {ano}<extra></extra>"))
+    fig.update_xaxes(title=None, categoryorder="array", categoryarray=MESES)
+    fig.update_yaxes(title=None, tickformat=",.0f", rangemode="tozero")
+    return estilo_padrao(fig, altura=360, legenda=True)
+
+
+@protegido
+def grafico_antes_depois(serie, coluna, nome, resultado, intervencao):
+    """LINHA MENSAL com o período antes (cinza) e depois (vermelho) da intervenção."""
+    if serie.empty:
+        return None
+    x = serie.index.to_timestamp()
+    fig = go.Figure(go.Scatter(
+        x=x, y=serie[coluna], mode="lines+markers", line={"color": GRAFITE, "width": 2},
+        marker={"size": 5}, hovertemplate="%{x|%m/%Y}: %{y:,.0f} " + nome.lower() + "<extra></extra>",
+    ))
+    if resultado:
+        meio = pd.Timedelta(days=15)
+        fig.add_vrect(x0=resultado["inicio_antes"].to_timestamp() - meio,
+                      x1=resultado["fim_antes"].to_timestamp() + meio,
+                      fillcolor=CINZA_CLARO, opacity=0.35, line_width=0,
+                      annotation_text="Antes", annotation_position="top left")
+        fig.add_vrect(x0=resultado["inicio_depois"].to_timestamp() - meio,
+                      x1=resultado["fim_depois"].to_timestamp() + meio,
+                      fillcolor=VERMELHO_CLARO, opacity=0.35, line_width=0,
+                      annotation_text="Depois", annotation_position="top left")
+        fig.add_vline(x=intervencao.to_timestamp(), line_color=VERMELHO, line_dash="dot")
+    fig.update_xaxes(title=None, dtick="M3", tickformat="%m/%Y")
+    fig.update_yaxes(title=None, tickformat=",.0f", rangemode="tozero")
+    return estilo_padrao(fig, altura=340)
 
 
 # =============================================================================

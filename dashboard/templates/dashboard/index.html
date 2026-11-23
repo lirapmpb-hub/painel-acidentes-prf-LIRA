@@ -2,17 +2,19 @@
 {% block titulo %}Visão geral{% endblock %}
 
 {% block conteudo %}
+    {% include "dashboard/_resumo.html" with frases=resumo %}
+
     {% include "dashboard/_cartoes.html" with kpis=kpis %}
 
     <!-- Linha + rosca -->
     <section class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
         <div class="cartao lg:col-span-2">
-            <h2 class="titulo-secao">Acidentes por mês</h2>
-            <p class="subtitulo">Passe o mouse sobre um ponto para ver também os mortos</p>
+            <h2 class="titulo-secao">Como os acidentes evoluem mês a mês?</h2>
+            <p class="subtitulo">Passe o mouse sobre um ponto para ver também os mortos · a linha cinza é a média</p>
             <div class="mt-3">{{ grafico_linha|safe }}</div>
         </div>
         <div class="cartao">
-            <h2 class="titulo-secao">Gravidade dos acidentes</h2>
+            <h2 class="titulo-secao">Qual a gravidade dos acidentes?</h2>
             <p class="subtitulo">Classificação feita pela PRF</p>
             <div class="mt-3">{{ grafico_classificacao|safe }}</div>
         </div>
@@ -20,20 +22,20 @@
 
     <!-- Mapa -->
     <section class="cartao">
-        <h2 class="titulo-secao">Onde aconteceram</h2>
-        <p class="subtitulo">{{ aviso_mapa }} · use a roda do mouse para aproximar</p>
+        <h2 class="titulo-secao">Onde aconteceram?</h2>
+        <p class="subtitulo">{{ aviso_mapa }} · use a roda do mouse para aproximar · para ver onde a gravidade se concentra, abra a aba <b>Onde agir</b></p>
         <div class="mt-3">{{ grafico_mapa|safe }}</div>
     </section>
 
     <!-- Mapa de calor + mapa de árvore -->
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         <div class="cartao">
-            <h2 class="titulo-secao">Quando acontecem</h2>
+            <h2 class="titulo-secao">Em que dia e horário acontecem mais?</h2>
             <p class="subtitulo">Dia da semana e hora · quanto mais escuro, mais acidentes</p>
             <div class="mt-3">{{ grafico_calor|safe }}</div>
         </div>
         <div class="cartao">
-            <h2 class="titulo-secao">Tipos de acidente</h2>
+            <h2 class="titulo-secao">Que tipos de acidente predominam?</h2>
             <p class="subtitulo">Quanto maior o bloco, maior a participação</p>
             <div class="mt-3">{{ grafico_tipos|safe }}</div>
         </div>
@@ -42,8 +44,8 @@
     <!-- Rankings -->
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         <div class="cartao">
-            <h2 class="titulo-secao">Principais causas</h2>
-            <p class="subtitulo">As 10 causas mais frequentes</p>
+            <h2 class="titulo-secao">Quais as causas mais frequentes?</h2>
+            <p class="subtitulo">As 10 causas mais comuns · a aba <b>Onde agir</b> agrupa as causas por quem pode agir</p>
             <div class="mt-3">{{ grafico_causas|safe }}</div>
         </div>
         <div class="cartao">

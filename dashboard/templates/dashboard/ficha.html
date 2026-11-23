@@ -1,0 +1,143 @@
+{% extends "dashboard/base.html" %}
+{% block titulo %}Ficha do trecho{% endblock %}
+
+{% block campos_extras %}
+    {% comment %} Mantém o trecho ao trocar período ou gravidade nos filtros {% endcomment %}
+    {% if trecho is not None %}<input type="hidden" name="trecho" value="{{ trecho }}">{% endif %}
+{% endblock %}
+
+{% block conteudo %}
+{% if sem_trecho %}
+    <section class="cartao">
+        <h2 class="titulo-secao">Ficha do trecho</h2>
+        <p class="mt-2 text-sm text-pm-preto/80">
+            A ficha reúne tudo sobre um trecho de 10 km: números, tendência, recomendações, horários e causas, pronta para imprimir ou salvar em PDF.
+            Escolha um dos trechos mais graves do filtro atual
+            (ou abra qualquer trecho pelas abas <b>Onde agir</b> e <b>Trechos críticos</b>).
+        </p>
+        <ul class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {% for o in opcoes %}
+            <li>
+                <a href="{{ o.link }}" class="block rounded border border-pm-cinza-claro/70 p-3 hover:border-pm-vermelho hover:bg-pm-vermelho/5">
+                    <span class="font-titulo text-sm font-bold text-pm-vermelho-escuro">{{ forloop.counter }}. {{ o.nome }}</span>
+                    <span class="block text-xs text-pm-cinza">{{ o.local }}</span>
+                    <span class="block text-xs text-pm-preto/80">{{ o.ups }} UPS · {{ o.acidentes }} acidentes · {{ o.mortos }} mortos</span>
+                </a>
+            </li>
+            {% empty %}
+            <li class="text-sm text-pm-cinza">Sem trechos identificados para este filtro.</li>
+            {% endfor %}
+        </ul>
+    </section>
+{% else %}
+    <section class="cartao">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <p class="font-titulo text-xs font-bold uppercase tracking-wide text-pm-cinza">Ficha do trecho · {{ texto_periodo }}</p>
+                <h2 class="mt-1 font-titulo text-2xl sm:text-3xl font-black text-pm-preto">{{ nome_trecho }}</h2>
+                <p class="text-sm text-pm-preto/80">{{ municipio_trecho }} · {{ descricao_filtro }}</p>
+            </div>
+            <div class="flex gap-2 print:hidden">
+                <a href="{{ link_onde_agir }}" class="rounded border border-pm-preto px-3 py-2 font-titulo text-xs font-bold text-pm-preto hover:bg-pm-preto hover:text-white">← Outros trechos</a>
+                <button type="button" onclick="window.print()" class="rounded bg-pm-vermelho px-4 py-2 font-titulo text-xs font-bold uppercase tracking-wide text-white hover:bg-pm-vermelho-escuro">Imprimir / salvar PDF</button>
+            </div>
+        </div>
+    </section>
+
+    {% if vazio %}
+    <p class="cartao text-sm text-pm-cinza">Sem acidentes neste trecho para o filtro escolhido.</p>
+    {% else %}
+    {% include "dashboard/_cartoes.html" with kpis=kpis %}
+
+    <!-- Recomendações -->
+    <section class="cartao border-l-4 border-l-pm-vermelho">
+        <h2 class="titulo-secao">O que fazer neste trecho</h2>
+        <p class="subtitulo">Sugestões geradas a partir dos dados; devem ser validadas com o conhecimento do local</p>
+        <ul class="mt-3 space-y-3">
+            {% for r in recomendacoes %}
+            <li class="grid grid-cols-1 sm:grid-cols-[9rem_1fr] gap-1 sm:gap-4 text-sm">
+                <span class="font-titulo text-xs font-bold uppercase tracking-wide text-pm-vermelho-escuro pt-0.5">{{ r.tipo }}</span>
+                <span>{{ r.texto }}{% if r.quem %}<span class="block text-xs text-pm-cinza">Quem age: {{ r.quem }}</span>{% endif %}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <!-- Quando -->
+    <section class="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
+        <div class="cartao lg:col-span-3">
+            <h2 class="titulo-secao">Em que dia e horário a gravidade é maior?</h2>
+            <p class="subtitulo">Cada acidente pesa pela gravidade (UPS)</p>
+            <div class="mt-3">{{ grafico_calor|safe }}</div>
+        </div>
+        <div class="cartao lg:col-span-2">
+            <h2 class="titulo-secao">Escala sugerida</h2>
+            <p class="subtitulo">Janelas de 3 horas, por prioridade</p>
+            <table class="mt-3 min-w-full text-sm">
+                <thead>
+                    <tr class="border-b-2 border-pm-preto font-titulo text-xs uppercase tracking-wide text-pm-cinza">
+                        <th class="py-2 pr-2 text-left font-bold">Janela</th>
+                        <th class="py-2 pr-2 text-right font-bold">Acid.</th>
+                        <th class="py-2 pr-2 text-right font-bold">Mortos</th>
+                        <th class="py-2 text-right font-bold">Gravidade</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for j in janelas %}
+                    <tr class="border-b border-pm-cinza-claro/50">
+                        <td class="py-2 pr-2"><b>{{ j.dia }}</b><span class="block text-xs text-pm-cinza">das {{ j.horario }}</span></td>
+                        <td class="py-2 pr-2 text-right tabular-nums">{{ j.acidentes }}</td>
+                        <td class="py-2 pr-2 text-right tabular-nums">{{ j.mortos }}</td>
+                        <td class="py-2 text-right tabular-nums">{{ j.parte }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Evolução e causas -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <div class="cartao">
+            <h2 class="titulo-secao">Está piorando ou melhorando?</h2>
+            <p class="subtitulo">Acidentes por mês: {{ ano_atual }} e os mesmos meses de {{ ano_anterior }}</p>
+            <div class="mt-3">{{ grafico_mensal|safe }}</div>
+        </div>
+        <div class="cartao">
+            <h2 class="titulo-secao">Quem pode agir?</h2>
+            <p class="subtitulo">Parte da gravidade por grupo de causas</p>
+            <div class="mt-3">{{ grafico_grupos|safe }}</div>
+        </div>
+    </section>
+
+    <section class="cartao">
+        <h2 class="titulo-secao">Principais causas por grupo</h2>
+        <div class="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {% for g in grupos %}
+            <div class="rounded border border-pm-cinza-claro/70 border-l-4 p-3" style="border-left-color: {{ g.cor }}">
+                <p class="font-titulo text-sm font-bold">{{ g.grupo }} <span class="font-sans text-xs font-normal text-pm-cinza">· {{ g.parte }}</span></p>
+                <p class="text-xs text-pm-vermelho-escuro">{{ g.quem }}</p>
+                <ul class="mt-1 text-xs text-pm-preto/80">
+                    {% for c in g.causas %}<li>• {{ c.nome }} <span class="text-pm-cinza">({{ c.acidentes }}; {{ c.mortos }} mortos)</span></li>{% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <div class="cartao">
+            <h2 class="titulo-secao">Que tipos de acidente acontecem?</h2>
+            <div class="mt-3">{{ grafico_tipos|safe }}</div>
+        </div>
+        <div class="cartao">
+            <h2 class="titulo-secao">Onde exatamente?</h2>
+            <p class="subtitulo">Cada ponto é um acidente, colorido pela gravidade</p>
+            <div class="mt-3">{{ grafico_mapa|safe }}</div>
+        </div>
+    </section>
+
+    <p class="text-xs text-pm-cinza">Fonte: Polícia Rodoviária Federal (dados abertos datatran). Ficha gerada pelo Painel de Acidentes nas Rodovias Federais da PMPB.</p>
+    {% endif %}
+{% endif %}
+{% endblock %}

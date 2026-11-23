@@ -59,6 +59,12 @@
             clip-path: polygon(0 40%, 42% 40%, 45% 0, 100% 0, 100% 100%, 0 100%); }
         .faixa-pmpb-invertida { height: 10px; background: #e30613;
             clip-path: polygon(0 0, 55% 0, 58% 60%, 100% 60%, 100% 100%, 0 100%); }
+        /* Impressão (Ficha do trecho e demais páginas): fundo branco e quadros inteiros */
+        @media print {
+            body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .cartao, section > div { break-inside: avoid; box-shadow: none; }
+            main { padding-top: 0.5rem; }
+        }
     </style>
 
     <!-- Plotly: biblioteca dos gráficos, carregada uma vez para a página toda -->
@@ -79,16 +85,21 @@
             </div>
 
             <p class="mt-4 text-sm text-pm-cinza-claro">Exibindo: <span class="font-bold text-white">{{ local }}</span> · {{ texto_periodo }} · {{ descricao_filtro }}</p>
-            {% if trecho is not None %}
-            <p class="mt-2">
-                <a href="{{ link_sem_trecho }}" class="inline-flex items-center gap-2 rounded-full bg-pm-vermelho px-3 py-1 text-xs font-bold text-white hover:bg-pm-vermelho-escuro">
-                    Trecho: BR-{{ br }}, km {{ trecho }} a {{ trecho_fim }} <span aria-hidden="true">✕</span><span class="sr-only">tirar o filtro de trecho</span>
+
+            <!-- Filtros em uso: cada etiqueta tira o seu filtro -->
+            <div class="mt-2 flex flex-wrap items-center gap-2 print:hidden">
+                {% for e in etiquetas %}
+                <a href="{{ e.link }}" class="inline-flex items-center gap-2 rounded-full bg-pm-vermelho px-3 py-1 text-xs font-bold text-white hover:bg-pm-vermelho-escuro" title="Tirar este filtro">
+                    {{ e.texto }} <span aria-hidden="true">✕</span><span class="sr-only">tirar este filtro</span>
                 </a>
-            </p>
-            {% endif %}
+                {% endfor %}
+                <button type="button" id="copiar-link" class="inline-flex items-center gap-1 rounded-full border border-pm-cinza px-3 py-1 text-xs font-bold text-pm-cinza-claro hover:border-white hover:text-white" title="Copia o endereço desta página, com os filtros, para enviar a outra pessoa">
+                    Copiar link desta visão
+                </button>
+            </div>
 
             <!-- Abas: cada link mantém os filtros atuais -->
-            <nav class="mt-5 flex items-end justify-between gap-4">
+            <nav class="mt-5 flex items-end justify-between gap-4 print:hidden">
                 <div class="flex gap-1 overflow-x-auto">
                     {% for item in abas %}
                     <a href="{{ item.url }}" class="whitespace-nowrap rounded-t px-4 py-2 font-titulo text-sm font-bold {% if item.ativa %}bg-pm-fundo text-pm-preto border-t-[3px] border-pm-vermelho{% else %}text-pm-cinza-claro hover:bg-white/10 hover:text-white border-t-[3px] border-transparent{% endif %}">{{ item.titulo }}</a>
@@ -96,6 +107,7 @@
                 </div>
                 <a href="{{ link_exportar }}" class="mb-2 hidden sm:inline-block whitespace-nowrap rounded border border-pm-cinza px-3 py-1.5 text-xs font-bold text-white hover:border-pm-vermelho hover:bg-pm-vermelho" title="Baixa os acidentes do filtro atual, com as 30 colunas da PRF">Baixar CSV</a>
             </nav>
+            <div class="hidden print:block h-4"></div>
         </div>
     </header>
     <div class="faixa-pmpb" aria-hidden="true"></div>
@@ -103,7 +115,8 @@
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
         <!-- FILTROS: ao clicar em Filtrar, a página recarrega com as escolhas na URL -->
-        <form method="get" action="" class="cartao grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+        <form method="get" action="" class="cartao grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end print:hidden">
+            {% block campos_extras %}{% endblock %}
             <div class="lg:col-span-2">
                 <label for="uf" class="rotulo">Estado</label>
                 <!-- onchange: ao trocar o estado, recarrega para mostrar os municípios e BRs dele -->
@@ -186,10 +199,39 @@
         </form>
 
         {% block conteudo %}{% endblock %}
+
+        <!-- Glossário: como ler os indicadores -->
+        <details class="cartao print:hidden" id="glossario">
+            <summary class="cursor-pointer select-none font-titulo text-sm font-bold text-pm-preto hover:text-pm-vermelho">ⓘ Como ler este painel: o que significa cada indicador</summary>
+            <dl class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                <div><dt class="font-bold">Índice de gravidade</dt><dd class="text-pm-preto/80">Mortos a cada 100 acidentes. Mostra o quanto os acidentes são letais, independentemente de quantos acontecem. Só entra em destaques e rankings quando há pelo menos 30 acidentes.</dd></div>
+                <div><dt class="font-bold">Gravidade (UPS)</dt><dd class="text-pm-preto/80">Unidade Padrão de Severidade, do DENATRAN. Cada acidente vale 1 se não teve vítimas, 4 se teve feridos, 6 se teve pedestre ferido e 13 se teve morte. A soma mede a gravidade total e é usada para priorizar: um trecho com poucas batidas e várias mortes fica à frente de um com muitas batidas leves.</dd></div>
+                <div><dt class="font-bold">Trecho</dt><dd class="text-pm-preto/80">10 km de uma BR dentro de um estado (ex.: BR-230, km 20 a 30, na PB). A quilometragem recomeça em cada divisa.</dd></div>
+                <div><dt class="font-bold">Janela de risco</dt><dd class="text-pm-preto/80">Um dia da semana e uma faixa de 3 horas (ex.: sexta-feira, das 18h às 21h). "2,5 vezes a média" quer dizer que a janela tem 2,5 vezes a gravidade de uma janela qualquer da semana.</dd></div>
+                <div><dt class="font-bold">Tendência (▲ ▼)</dt><dd class="text-pm-preto/80">Compara com os <b>mesmos meses</b> e filtros do ano anterior, para a comparação ser justa. ▲ piorou 5% ou mais; ▲▲ piorou 25% ou mais; ▼ e ▼▼ o mesmo para melhora; = estável. "Poucos casos" quando os números são pequenos demais para comparar.</dd></div>
+                <div><dt class="font-bold">Causas por responsável</dt><dd class="text-pm-preto/80">As causas da PRF agrupadas por quem pode agir: infrações (fiscalização PM/PRF), condição do veículo (fiscalização veicular), falhas da via (DNIT/DER), pedestres (travessias e educação), atenção do condutor (educação) e ambiente (alertas, animais).</dd></div>
+                <div><dt class="font-bold">Antes e depois</dt><dd class="text-pm-preto/80">Compara a média mensal antes e depois de uma ação. O "efeito" desconta a variação que já acontecia nos mesmos meses do ano anterior (sazonalidade). Mostra associação, não prova que a ação causou a mudança.</dd></div>
+                <div><dt class="font-bold">Fonte e limites</dt><dd class="text-pm-preto/80">Dados abertos da PRF, só rodovias federais. Mortes registradas no local; óbitos posteriores no hospital podem não aparecer. O ano atual tem só os meses já publicados.</dd></div>
+            </dl>
+        </details>
     </main>
 
+    <script>
+        // Botão "Copiar link desta visão": copia o endereço com os filtros
+        document.getElementById("copiar-link")?.addEventListener("click", async (evento) => {
+            const botao = evento.currentTarget;
+            try {
+                await navigator.clipboard.writeText(location.href);
+                botao.textContent = "Link copiado ✓";
+            } catch (erro) {
+                window.prompt("Copie o endereço:", location.href);
+            }
+            setTimeout(() => { botao.textContent = "Copiar link desta visão"; }, 2500);
+        });
+    </script>
+
     <!-- Rodapé no padrão do slide de fechamento do MIV -->
-    <footer class="mt-4">
+    <footer class="mt-4 print:hidden">
         <div class="faixa-pmpb-invertida" aria-hidden="true"></div>
         <div class="bg-pm-preto text-pm-cinza-claro">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row sm:items-center gap-4">

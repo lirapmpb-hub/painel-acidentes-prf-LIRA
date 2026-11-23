@@ -1,0 +1,113 @@
+{% extends "dashboard/base.html" %}
+{% block titulo %}Onde agir{% endblock %}
+
+{% block conteudo %}
+    {% include "dashboard/_resumo.html" with frases=resumo %}
+
+    <!-- 1. ONDE: ranking por gravidade -->
+    <section class="cartao">
+        <h2 class="titulo-secao">Onde agir primeiro?</h2>
+        <p class="subtitulo">
+            Os 20 trechos de 10 km com maior <b>gravidade total (UPS)</b>
+            <span class="cursor-help text-pm-cinza-medio hover:text-pm-vermelho" title="{{ ajuda_ups }}" tabindex="0">ⓘ</span>,
+            que pesa mais os acidentes com mortes e feridos.
+            {% if tem_anterior %}A tendência compara com os mesmos meses de {{ ano_anterior }}.{% endif %}
+            Clique no trecho para abrir a ficha com as recomendações.
+        </p>
+        <div class="mt-3 overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr class="border-b-2 border-pm-preto font-titulo text-xs uppercase tracking-wide text-pm-cinza">
+                        <th class="py-2 pr-3 text-right font-bold">#</th>
+                        <th class="py-2 pr-4 text-left font-bold">Trecho</th>
+                        <th class="py-2 pr-4 text-right font-bold">Gravidade (UPS)</th>
+                        <th class="py-2 pr-4 text-right font-bold">% do total</th>
+                        {% if tem_anterior %}<th class="py-2 pr-4 text-right font-bold">Tendência</th>{% endif %}
+                        <th class="py-2 pr-4 text-right font-bold">Acidentes</th>
+                        <th class="py-2 pr-4 text-right font-bold">Mortos</th>
+                        <th class="py-2 pr-4 text-left font-bold">Janela de maior risco</th>
+                        <th class="py-2 pr-4 text-left font-bold">Causa mais grave</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in linhas %}
+                    <tr class="border-b border-pm-cinza-claro/50 odd:bg-pm-fundo/50 hover:bg-pm-vermelho/5 align-top">
+                        <td class="py-2 pr-3 text-right tabular-nums text-pm-cinza">{{ l.posicao }}</td>
+                        <td class="py-2 pr-4">
+                            <a href="{{ l.link }}" class="font-bold text-pm-vermelho-escuro hover:underline whitespace-nowrap">{{ l.nome }}</a>
+                            <span class="block text-xs text-pm-cinza">{{ l.local }}</span>
+                        </td>
+                        <td class="py-2 pr-4 text-right tabular-nums font-bold">{{ l.ups }}</td>
+                        <td class="py-2 pr-4 text-right tabular-nums">{{ l.parte }}</td>
+                        {% if tem_anterior %}
+                        <td class="py-2 pr-4 text-right tabular-nums whitespace-nowrap font-bold {{ l.tend.classe }}">{{ l.tend.seta }} {{ l.tend.texto }}</td>
+                        {% endif %}
+                        <td class="py-2 pr-4 text-right tabular-nums">{{ l.acidentes }}</td>
+                        <td class="py-2 pr-4 text-right tabular-nums">{{ l.mortos }}</td>
+                        <td class="py-2 pr-4 whitespace-nowrap">{{ l.janela }}</td>
+                        <td class="py-2 pr-4 min-w-[14rem]">{{ l.causa }}<span class="block text-xs text-pm-cinza">{{ l.grupo }}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="9" class="py-10 text-center text-pm-cinza">Sem acidentes em trechos identificados para este filtro.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 2. ONDE (mapa): mancha de gravidade -->
+    <section class="cartao">
+        <h2 class="titulo-secao">Onde a gravidade se concentra?</h2>
+        <p class="subtitulo">Mapa de calor ponderado pela gravidade (UPS): quanto mais escura a mancha, mais mortes e feridos graves · escolha um estado para ver em detalhe</p>
+        <div class="mt-3">{{ grafico_densidade|safe }}</div>
+    </section>
+
+    <!-- 3. QUANDO: janelas de risco -->
+    <section class="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
+        <div class="cartao lg:col-span-3">
+            <h2 class="titulo-secao">Quando a gravidade é maior?</h2>
+            <p class="subtitulo">Dia da semana e hora, pesando cada acidente pela gravidade (UPS)</p>
+            <div class="mt-3">{{ grafico_calor|safe }}</div>
+        </div>
+        <div class="cartao lg:col-span-2">
+            <h2 class="titulo-secao">Sugestão de escala</h2>
+            <p class="subtitulo">As janelas de 3 horas com mais gravidade, em ordem de prioridade</p>
+            <ol class="mt-3 space-y-2 text-sm">
+                {% for j in janelas %}
+                <li class="flex items-start gap-3 border-b border-pm-cinza-claro/50 pb-2">
+                    <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full {% if forloop.counter <= 3 %}bg-pm-vermelho text-white{% else %}bg-pm-fundo text-pm-preto{% endif %} font-titulo text-xs font-bold">{{ forloop.counter }}</span>
+                    <span class="flex-1">
+                        <b>{{ j.dia }}</b>, das {{ j.horario }}
+                        <span class="block text-xs text-pm-cinza">{{ j.acidentes }} acidentes · {{ j.mortos }} mortos · {{ j.parte }} da gravidade · {{ j.vezes }}× a média</span>
+                    </span>
+                </li>
+                {% empty %}
+                <li class="py-6 text-center text-pm-cinza">Sem acidentes para este filtro.</li>
+                {% endfor %}
+            </ol>
+        </div>
+    </section>
+
+    <!-- 4. O QUE FAZER: causas por responsável -->
+    <section class="cartao">
+        <h2 class="titulo-secao">O que fazer e quem age?</h2>
+        <p class="subtitulo">As causas registradas pela PRF agrupadas por quem pode agir · barras = parte da gravidade total</p>
+        <div class="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            <div>{{ grafico_grupos|safe }}</div>
+            <div class="space-y-3">
+                {% for g in grupos %}
+                <div class="rounded border border-pm-cinza-claro/70 border-l-4 p-3" style="border-left-color: {{ g.cor }}">
+                    <p class="flex flex-wrap items-baseline justify-between gap-2">
+                        <span class="font-titulo text-sm font-bold">{{ g.grupo }}</span>
+                        <span class="text-xs text-pm-cinza">{{ g.parte }} da gravidade · {{ g.mortos }} mortos</span>
+                    </p>
+                    <p class="text-xs font-bold text-pm-vermelho-escuro">Quem age: {{ g.quem }}</p>
+                    <ul class="mt-1 text-xs text-pm-preto/80">
+                        {% for c in g.causas %}<li>• {{ c.nome }} <span class="text-pm-cinza">({{ c.acidentes }} acidentes, {{ c.mortos }} mortos)</span></li>{% endfor %}
+                    </ul>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+{% endblock %}
