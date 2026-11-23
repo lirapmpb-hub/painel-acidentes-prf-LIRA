@@ -49,9 +49,12 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'django.middleware.gzip.GZipMiddleware',  # comprime as páginas (a Visão geral cai de ~450 kB para ~120 kB)
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',  # serve o brasão e outros estáticos em produção
+    # Comprime as páginas (a Visão geral cai de ~450 kB para ~120 kB). Fica depois
+    # do WhiteNoise para não recomprimir imagens a cada visita; as páginas em cache
+    # já são guardadas comprimidas (ver dashboard/cache_paginas.py).
+    'django.middleware.gzip.GZipMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
