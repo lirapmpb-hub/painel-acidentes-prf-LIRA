@@ -49,6 +49,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'django.middleware.gzip.GZipMiddleware',  # comprime as páginas (a Visão geral cai de ~450 kB para ~120 kB)
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',  # serve o brasão e outros estáticos em produção
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -123,6 +124,15 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
+
+# Cache das páginas prontas (ver dashboard/cache_paginas.py), na memória do servidor.
+# Limite de 200 páginas (~20 a 40 MB), para caber nos 512 MB do plano gratuito do Render.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'OPTIONS': {'MAX_ENTRIES': 200},
+    }
+}
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'  # para onde o collectstatic copia os arquivos no deploy

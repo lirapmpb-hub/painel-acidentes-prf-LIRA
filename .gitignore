@@ -7,6 +7,7 @@ __pycache__/
 # Banco local (o painel não usa) e arquivos gerados no deploy
 db.sqlite3
 staticfiles/
+data/cache/
 
 # Editor e sistema
 .vscode/

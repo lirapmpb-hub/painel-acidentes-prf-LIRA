@@ -6,12 +6,17 @@ das colunas e cria colunas auxiliares (mês, hora, área, trecho) usadas pelos
 gráficos. O ano principal do painel é ANO_ATUAL; os outros servem para a aba
 de comparação anual.
 """
+import threading
 from functools import lru_cache
 
 import pandas as pd
 from django.conf import settings
 
 PASTA_DADOS = settings.BASE_DIR / "data"
+# Cópias já tratadas dos CSVs (formato pickle do pandas), geradas no deploy pelo
+# comando "python manage.py preparar_dados". Abrem ~14x mais rápido que o CSV.
+PASTA_CACHE = PASTA_DADOS / "cache"
+_trava_leitura = threading.Lock()  # evita ler o mesmo ano duas vezes ao mesmo tempo
 ANO_ATUAL = 2026
 ANOS = [2023, 2024, 2025, 2026]  # cada ano é um arquivo datatranAAAA.csv na pasta data
 
@@ -103,10 +108,40 @@ def preparar(df):
     return df
 
 
-@lru_cache(maxsize=None)  # cada arquivo é lido uma vez só, enquanto o servidor roda
-def _ler_ano(ano):
+def arquivo_cache(ano):
+    return PASTA_CACHE / f"datatran{ano}.pkl"
+
+
+def ler_e_preparar(ano):
+    """Lê o CSV do ano e aplica o tratamento completo (o caminho lento)."""
     df = preparar(ler_csv(arquivo_do_ano(ano)))
     return df[df["ano"] == ano]  # descarta linhas de outros anos, se houver
+
+
+def gerar_cache(ano):
+    """Grava a cópia tratada do ano em data/cache (usado no deploy)."""
+    PASTA_CACHE.mkdir(exist_ok=True)
+    ler_e_preparar(ano).to_pickle(arquivo_cache(ano))
+
+
+@lru_cache(maxsize=None)  # cada arquivo é lido uma vez só, enquanto o servidor roda
+def _ler_ano_sem_trava(ano):
+    cache, csv = arquivo_cache(ano), arquivo_do_ano(ano)
+    # Só usa a cópia tratada se ela for mais nova que o CSV (senão o CSV foi trocado)
+    if cache.exists() and cache.stat().st_mtime >= csv.stat().st_mtime:
+        return pd.read_pickle(cache)
+    return ler_e_preparar(ano)
+
+
+def _ler_ano(ano):
+    with _trava_leitura:
+        return _ler_ano_sem_trava(ano)
+
+
+def carregar_todos():
+    """Carrega todos os anos de uma vez (chamado quando o servidor liga)."""
+    for ano in anos_disponiveis():
+        _ler_ano(ano)
 
 
 def carregar_ano(ano):

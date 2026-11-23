@@ -5,7 +5,8 @@ services:
     name: painel-acidentes-prf
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    # preparar_dados grava os CSVs já tratados em data/cache, que abrem bem mais rápido
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py preparar_dados
     # Um processo só: os 4 anos de dados ocupam ~310 MB e o plano gratuito tem 512 MB.
     # As threads atendem várias visitas ao mesmo tempo, compartilhando os dados já carregados.
     startCommand: gunicorn config.wsgi:application --workers 1 --threads 4 --timeout 180
