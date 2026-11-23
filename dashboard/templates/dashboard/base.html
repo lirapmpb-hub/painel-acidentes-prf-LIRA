@@ -59,6 +59,11 @@
             clip-path: polygon(0 40%, 42% 40%, 45% 0, 100% 0, 100% 100%, 0 100%); }
         .faixa-pmpb-invertida { height: 10px; background: #e30613;
             clip-path: polygon(0 0, 55% 0, 58% 60%, 100% 60%, 100% 100%, 0 100%); }
+        /* Botões "Ordenar por" acima dos gráficos */
+        .botao-ordem { border: 1px solid #c6c6c6; border-radius: 9999px; padding: 2px 10px; font-size: 12px;
+            font-weight: 700; color: #706f6f; background: white; cursor: pointer; }
+        .botao-ordem:hover { border-color: #e30613; color: #e30613; }
+        .botao-ordem[aria-pressed="true"] { background: #1d1d1b; border-color: #1d1d1b; color: white; }
         /* Impressão (Ficha do trecho e demais páginas): fundo branco e quadros inteiros */
         @media print {
             body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -227,6 +232,28 @@
                 window.prompt("Copie o endereço:", location.href);
             }
             setTimeout(() => { botao.textContent = "Copiar link desta visão"; }, 2500);
+        });
+
+        // Botões "Ordenar por": trocam a ordem das barras sem recarregar a página.
+        // As listas de cada ordem vêm do servidor, em layout.meta (ver graficos.aplicar_ordens).
+        document.addEventListener("click", (evento) => {
+            const botao = evento.target.closest(".botao-ordem");
+            if (!botao) return;
+            const caixa = botao.closest(".ordenavel");
+            const grafico = caixa.querySelector(".js-plotly-plot");
+            const meta = grafico.layout.meta;
+            const ordem = meta.ordens[botao.dataset.ordem];
+            const n = ordem.length;
+            const visiveis = meta.limite ? Math.min(n, meta.limite) : n;
+            // Plotly.react redesenha recalculando as categorias (o relayout não recalcula
+            // a ordem dos eixos ligados entre si, como os três painéis lado a lado).
+            const layout = { ...grafico.layout, meta: { ...meta, ativa: botao.dataset.ordem } };
+            for (const eixo of Object.keys(layout).filter((k) => /^yaxis\d*$/.test(k))) {
+                layout[eixo] = { ...layout[eixo], categoryorder: "array", categoryarray: ordem,
+                                 range: [n - visiveis - 0.5, n - 0.5], autorange: false };
+            }
+            Plotly.react(grafico, grafico.data, layout);
+            caixa.querySelectorAll(".botao-ordem").forEach((b) => b.setAttribute("aria-pressed", b === botao));
         });
     </script>
 

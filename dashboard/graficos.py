@@ -15,6 +15,7 @@ from plotly.colors import sample_colorscale
 from plotly.offline import get_plotlyjs_version, plot
 from plotly.subplots import make_subplots
 
+from .calculos import MINIMO_PARA_INDICE
 from .dados import CLASSIFICACOES, DIAS_CURTOS, MESES
 
 # --- Cores ------------------------------------------------------------------
@@ -79,6 +80,53 @@ def encurtar(texto, limite=42):
 
 
 # =============================================================================
+# Ordenação escolhida pelo usuário (botões "Ordenar por" acima do gráfico)
+# =============================================================================
+# Cada gráfico ordenável guarda em layout.meta a lista das categorias em cada
+# ordem; os botões (ver html_de e o script do base.html) só trocam a ordem do
+# eixo, sem recarregar a página. Com `limite`, mostra só os N primeiros daquela
+# ordem: o gráfico recebe os candidatos de todas as ordens (ver calculos.candidatos).
+ROTULOS_ORDEM = {
+    "padrao": "Ordem natural", "acidentes": "Acidentes", "mortos": "Mortos",
+    "indice": "Letalidade", "vitimas": "Vítimas", "feridos_graves": "Feridos graves",
+    "feridos_leves": "Feridos leves", "nome": "Nome (A–Z)",
+}
+DICA_ORDEM = {"indice": f"Mortos a cada 100 acidentes. Categorias com menos de {MINIMO_PARA_INDICE} "
+                        "acidentes ficam no fim, porque o índice oscila demais com poucos casos."}
+
+
+def nomes_unicos(rotulos, limite):
+    """Nomes encurtados para o eixo, sem repetição (o eixo usa o nome como chave)."""
+    nomes, vistos = [], set()
+    for rotulo in rotulos:
+        nome = encurtar(rotulo, limite)
+        while nome in vistos:
+            nome += " "
+        vistos.add(nome)
+        nomes.append(nome)
+    return nomes
+
+
+def ordenar(nomes, tabela, chave, desempate):
+    """Nomes do menor para o maior valor (no gráfico de barras deitadas, o maior fica no topo)."""
+    if chave == "indice":
+        valores = list(zip(tabela["acidentes"] >= MINIMO_PARA_INDICE, tabela["indice"], tabela["acidentes"]))
+    else:
+        valores = list(zip(tabela[chave], tabela[desempate]))
+    return [nomes[i] for i in sorted(range(len(nomes)), key=lambda i: valores[i])]
+
+
+def aplicar_ordens(fig, ordens, ativa, limite):
+    """Põe o eixo na ordem ativa e guarda as outras ordens para os botões. Devolve quantas barras aparecem."""
+    n = len(ordens[ativa])
+    visiveis = min(n, limite) if limite else n
+    fig.update_yaxes(categoryorder="array", categoryarray=ordens[ativa],
+                     range=[n - visiveis - 0.5, n - 0.5], autorange=False)
+    fig.update_layout(meta={"ordens": ordens, "limite": limite or 0, "ativa": ativa}, dragmode=False)
+    return visiveis
+
+
+# =============================================================================
 # Visão geral
 # =============================================================================
 @protegido
@@ -87,21 +135,25 @@ def grafico_linha(tabela):
     if tabela["acidentes"].sum() == 0:
         return None
     tabela = tabela.sort_values("mes").copy()
-    tabela["mes_nome"] = tabela["mes"].map(lambda m: MESES[m - 1])
-    fig = px.line(tabela, x="mes_nome", y="acidentes", markers=True,
-                  custom_data=["mortos"], color_discrete_sequence=[GRAFITE])
-    fig.update_traces(
-        line={"width": 2.5},
-        marker={"size": 8, "line": {"color": "white", "width": 1.5}},
-        hovertemplate="%{x}: %{y:,.0f} acidentes<br>%{customdata[0]:,.0f} mortos<extra></extra>",
-    )
-    media = tabela["acidentes"].mean()
-    fig.add_hline(y=media, line_width=1, line_color=CINZA,
-                  annotation_text="Média: " + f"{media:,.0f}".replace(",", "."),
-                  annotation_position="top left")
+    x = [MESES[m - 1] for m in tabela["mes"]]
+    dados = list(zip(tabela["acidentes"], tabela["mortos"]))
+    dica = "%{x}: %{customdata[0]:,.0f} acidentes · %{customdata[1]:,.0f} mortos<extra></extra>"
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    fig.add_trace(go.Scatter(
+        x=x, y=tabela["acidentes"], name="Acidentes", mode="lines+markers", customdata=dados,
+        line={"color": GRAFITE, "width": 2.5}, marker={"size": 8, "line": {"color": "white", "width": 1.5}},
+        hovertemplate=dica,
+    ), secondary_y=False)
+    fig.add_trace(go.Scatter(
+        x=x, y=tabela["mortos"], name="Mortos (eixo da direita)", mode="lines+markers", customdata=dados,
+        line={"color": VERMELHO, "width": 2.5}, marker={"size": 8, "line": {"color": "white", "width": 1.5}},
+        hovertemplate=dica,
+    ), secondary_y=True)
     fig.update_xaxes(title=None)
-    fig.update_yaxes(title=None, tickformat=",.0f")
-    return estilo_padrao(fig, altura=360)
+    fig.update_yaxes(title="Acidentes", tickformat=",.0f", rangemode="tozero", secondary_y=False)
+    fig.update_yaxes(title="Mortos", tickformat=",.0f", rangemode="tozero", showgrid=False,
+                     color=VERMELHO, secondary_y=True)
+    return estilo_padrao(fig, altura=360, legenda=True)
 
 
 @protegido
@@ -210,8 +262,10 @@ def grafico_arvore(tabela):
         marker={"colors": cores, "line": {"color": "white", "width": 2}},
         root={"color": "white"},
         insidetextfont={"color": cores_texto},
-        texttemplate="%{label}<br>%{value:,.0f}",
-        hovertemplate="%{label}<br>%{value:,.0f} acidentes<br>%{percentRoot:.1%} do total<extra></extra>",
+        customdata=list(tabela["mortos"]) if "mortos" in tabela else [0] * len(tabela),
+        texttemplate="%{label}<br>%{value:,.0f} acidentes · %{customdata:,.0f} mortos",
+        hovertemplate=("%{label}<br>%{value:,.0f} acidentes (%{percentRoot:.1%} do total)"
+                       "<br>%{customdata:,.0f} mortos<extra></extra>"),
         pathbar={"visible": False},
     ))
     estilo_padrao(fig, altura=420)
@@ -246,68 +300,92 @@ def grafico_barras(tabela, rotulo, valor, nome_valor, cor=GRAFITE):
 # Condições, vítimas e estrutura
 # =============================================================================
 @protegido
-def grafico_condicao(tabela, media, ordem="acidentes"):
+def grafico_condicao(tabela, media, ordem="acidentes", limite=None):
     """
-    BARRAS DUPLAS - para cada categoria, à esquerda quantos acidentes e à
-    direita quantos mortos a cada 100 acidentes (vermelho = acima da média,
-    linha pontilhada = média). Colunas: rotulo, acidentes, indice.
-    ordem=None mantém a ordem recebida (a primeira linha fica no topo).
+    BARRAS TRIPLAS - para cada categoria: quantos acidentes, quantos mortos e
+    quantos mortos a cada 100 acidentes (vermelho = acima da média, linha
+    pontilhada = média). Colunas: rotulo, acidentes, mortos, indice.
+    ordem = ordem inicial ("acidentes", "mortos" ou "indice"); None mantém a
+    ordem recebida (a primeira linha no topo). limite = quantas barras mostrar.
+    Os botões "Ordenar por" trocam a ordem no navegador.
     """
-    tabela = tabela[tabela["acidentes"] > 0]
+    tabela = tabela[tabela["acidentes"] > 0].reset_index(drop=True)
     if tabela.empty:
         return None
-    tabela = tabela.sort_values(ordem) if ordem else tabela.iloc[::-1]
     rotulos = [str(r) for r in tabela["rotulo"]]
-    nomes = [encurtar(r, 34) for r in rotulos]
+    nomes = nomes_unicos(rotulos, 34)
+    ordens = {"padrao": nomes[::-1]} if ordem is None else {}
+    ordens["acidentes"] = ordenar(nomes, tabela, "acidentes", "mortos")
+    ordens["mortos"] = ordenar(nomes, tabela, "mortos", "acidentes")
+    ordens["indice"] = ordenar(nomes, tabela, "indice", "acidentes")
+    if not limite:
+        ordens["nome"] = sorted(nomes, reverse=True)
 
-    fig = make_subplots(rows=1, cols=2, shared_yaxes=True, horizontal_spacing=0.08,
-                        subplot_titles=("Acidentes", "Mortos a cada 100 acidentes"))
+    dados = [[r, a, m, i] for r, a, m, i in zip(rotulos, tabela["acidentes"], tabela["mortos"], tabela["indice"])]
+    dica = ("%{customdata[0]}<br>%{customdata[1]:,.0f} acidentes · %{customdata[2]:,.0f} mortos"
+            "<br>%{customdata[3]:.1f} mortos a cada 100 acidentes<extra></extra>")
+    fig = make_subplots(rows=1, cols=3, shared_yaxes=True, horizontal_spacing=0.04,
+                        column_widths=[0.36, 0.28, 0.36],
+                        subplot_titles=("Acidentes", "Mortos", "Mortos a cada 100 acidentes"))
     fig.add_trace(go.Bar(
-        x=tabela["acidentes"], y=nomes, orientation="h", marker_color=GRAFITE, customdata=rotulos,
-        texttemplate="%{x:,.0f}", textposition="outside", cliponaxis=False,
-        hovertemplate="%{customdata}<br>%{x:,.0f} acidentes<extra></extra>",
+        x=tabela["acidentes"], y=nomes, orientation="h", marker_color=GRAFITE, customdata=dados,
+        texttemplate="%{x:,.0f}", textposition="outside", cliponaxis=False, hovertemplate=dica,
     ), row=1, col=1)
     fig.add_trace(go.Bar(
-        x=tabela["indice"], y=nomes, orientation="h", customdata=rotulos,
-        marker_color=[VERMELHO if v > media else CINZA for v in tabela["indice"]],
-        texttemplate="%{x:.1f}", textposition="outside", cliponaxis=False,
-        hovertemplate="%{customdata}<br>%{x:.1f} mortos a cada 100 acidentes<extra></extra>",
+        x=tabela["mortos"], y=nomes, orientation="h", marker_color=VERMELHO, customdata=dados,
+        texttemplate="%{x:,.0f}", textposition="outside", cliponaxis=False, hovertemplate=dica,
     ), row=1, col=2)
+    fig.add_trace(go.Bar(
+        x=tabela["indice"], y=nomes, orientation="h", customdata=dados,
+        marker_color=[VERMELHO_MEDIO if v > media else CINZA_CLARO for v in tabela["indice"]],
+        texttemplate="%{x:.1f}", textposition="outside", cliponaxis=False, hovertemplate=dica,
+    ), row=1, col=3)
     if media > 0:
-        fig.add_vline(x=media, line_width=1, line_dash="dot", line_color=CINZA_ESCURO, row=1, col=2)
+        fig.add_vline(x=media, line_width=1, line_dash="dot", line_color=CINZA_ESCURO, row=1, col=3)
 
-    fig.update_xaxes(title=None, showticklabels=False, showgrid=False, zeroline=False)
-    fig.update_xaxes(range=[0, tabela["acidentes"].max() * 1.25], row=1, col=1)
-    fig.update_xaxes(range=[0, max(tabela["indice"].max(), media) * 1.3 or 1], row=1, col=2)
+    fig.update_xaxes(title=None, showticklabels=False, showgrid=False, zeroline=False, fixedrange=True)
+    fig.update_xaxes(range=[0, tabela["acidentes"].max() * 1.35], row=1, col=1)
+    fig.update_xaxes(range=[0, (tabela["mortos"].max() or 1) * 1.4], row=1, col=2)
+    fig.update_xaxes(range=[0, max(tabela["indice"].max(), media) * 1.35 or 1], row=1, col=3)
     fig.update_yaxes(title=None)
-    estilo_padrao(fig, altura=max(200, 30 * len(tabela) + 70))
-    fig.update_layout(margin={"l": 10, "r": 20, "t": 40, "b": 10}, bargap=0.25)
+    estilo_padrao(fig, altura=200)
+    visiveis = aplicar_ordens(fig, ordens, ordem or "padrao", limite)
+    fig.update_layout(height=max(200, 30 * visiveis + 70),
+                      margin={"l": 10, "r": 20, "t": 40, "b": 10}, bargap=0.25)
     fig.update_annotations(font={"size": 12, "color": CINZA_ESCURO})
     return fig
 
 
 @protegido
-def grafico_empilhado(tabela, rotulo, series):
+def grafico_empilhado(tabela, rotulo, series, ordem="vitimas", limite=None):
     """
     BARRAS EMPILHADAS horizontais. series = [(coluna, nome, cor), ...].
-    A tabela deve vir do maior para o menor; o maior fica no topo.
+    A tabela precisa da coluna "vitimas" (soma das séries). Os botões
+    "Ordenar por" escolhem a série que define a ordem.
     """
     if tabela.empty:
         return None
-    tabela = tabela.iloc[::-1]
+    tabela = tabela.reset_index(drop=True)
     rotulos = [str(r) for r in tabela[rotulo]]
-    nomes = [encurtar(r) for r in rotulos]
+    nomes = nomes_unicos(rotulos, 42)
+    ordens = {"vitimas": ordenar(nomes, tabela, "vitimas", "mortos")}
+    for coluna, _, _ in series:
+        ordens[coluna] = ordenar(nomes, tabela, coluna, "vitimas")
     fig = go.Figure()
     for coluna, nome, cor in series:
         fig.add_trace(go.Bar(
             x=tabela[coluna], y=nomes, name=nome, orientation="h", marker_color=cor,
-            customdata=rotulos,
-            hovertemplate="%{customdata}<br>%{x:,.0f} " + nome.lower() + "<extra></extra>",
+            customdata=[[r, v] for r, v in zip(rotulos, tabela["vitimas"])],
+            hovertemplate="%{customdata[0]}<br>%{x:,.0f} " + nome.lower() +
+                          " de %{customdata[1]:,.0f} vítimas<extra></extra>",
         ))
     fig.update_layout(barmode="stack")
-    fig.update_xaxes(title=None, tickformat=",.0f")
+    fig.update_xaxes(title=None, tickformat=",.0f", fixedrange=True)
     fig.update_yaxes(title=None)
-    return estilo_padrao(fig, altura=max(280, 30 * len(tabela) + 80), legenda=True)
+    estilo_padrao(fig, altura=280, legenda=True)
+    visiveis = aplicar_ordens(fig, ordens, ordem, limite)
+    fig.update_layout(height=max(280, 30 * visiveis + 80))
+    return fig
 
 
 # =============================================================================
@@ -489,13 +567,29 @@ def grafico_antes_depois(serie, coluna, nome, resultado, intervencao):
 # =============================================================================
 # Conversão para HTML
 # =============================================================================
+def botoes_de_ordem(meta):
+    """Botões "Ordenar por" de um gráfico ordenável (o clique é tratado no base.html)."""
+    botoes = []
+    for chave in meta["ordens"]:
+        pressionado = "true" if chave == meta["ativa"] else "false"
+        dica = f' title="{escape(DICA_ORDEM[chave])}"' if chave in DICA_ORDEM else ""
+        botoes.append(f'<button type="button" class="botao-ordem" data-ordem="{chave}" '
+                      f'aria-pressed="{pressionado}"{dica}>{ROTULOS_ORDEM.get(chave, chave)}</button>')
+    return ('<div class="mb-1 flex flex-wrap items-center gap-1 print:hidden">'
+            '<span class="mr-1 text-xs text-pm-cinza">Ordenar por:</span>' + "".join(botoes) + "</div>")
+
+
 def html_de(fig):
     """Converte um gráfico em HTML (ou devolve o aviso de sem dados / erro)."""
     if fig is None:
         return AVISO_SEM_DADOS
     if isinstance(fig, str):  # mensagem de erro vinda de @protegido
         return fig
-    return plot(fig, output_type="div", include_plotlyjs=False, config=CONFIG_PLOTLY)
+    div = plot(fig, output_type="div", include_plotlyjs=False, config=CONFIG_PLOTLY)
+    meta = fig.layout.meta
+    if meta and "ordens" in meta and len(meta["ordens"]) > 1:
+        return f'<div class="ordenavel">{botoes_de_ordem(meta)}{div}</div>'
+    return div
 
 
 def para_html(figuras):

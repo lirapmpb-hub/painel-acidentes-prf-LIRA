@@ -9,8 +9,8 @@
     <!-- Linha + rosca -->
     <section class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
         <div class="cartao lg:col-span-2">
-            <h2 class="titulo-secao">Como os acidentes evoluem mês a mês?</h2>
-            <p class="subtitulo">Passe o mouse sobre um ponto para ver também os mortos · a linha cinza é a média</p>
+            <h2 class="titulo-secao">Como acidentes e mortes evoluem mês a mês?</h2>
+            <p class="subtitulo">Linha escura = acidentes (eixo da esquerda) · linha vermelha = mortos (eixo da direita)</p>
             <div class="mt-3">{{ grafico_linha|safe }}</div>
         </div>
         <div class="cartao">
@@ -36,22 +36,20 @@
         </div>
         <div class="cartao">
             <h2 class="titulo-secao">Que tipos de acidente predominam?</h2>
-            <p class="subtitulo">Quanto maior o bloco, maior a participação</p>
+            <p class="subtitulo">Quanto maior o bloco, mais acidentes · cada bloco mostra também os mortos</p>
             <div class="mt-3">{{ grafico_tipos|safe }}</div>
         </div>
     </section>
 
-    <!-- Rankings -->
-    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-        <div class="cartao">
-            <h2 class="titulo-secao">Quais as causas mais frequentes?</h2>
-            <p class="subtitulo">As 10 causas mais comuns · a aba <b>Onde agir</b> agrupa as causas por quem pode agir</p>
-            <div class="mt-3">{{ grafico_causas|safe }}</div>
-        </div>
-        <div class="cartao">
-            <h2 class="titulo-secao">{{ titulo_ranking }}</h2>
-            <p class="subtitulo">Os 10 primeiros</p>
-            <div class="mt-3">{{ grafico_ranking|safe }}</div>
-        </div>
-    </section>
+    <!-- Rankings: acidentes, mortos e letalidade, com a ordem escolhida pelo usuário -->
+    <div class="cartao">
+        <h2 class="titulo-secao">Quais causas provocam mais acidentes e mortes?</h2>
+        <p class="subtitulo">As 10 primeiras na ordem escolhida · a aba <b>Onde agir</b> agrupa as causas por quem pode agir</p>
+        <div class="mt-3">{{ grafico_causas|safe }}</div>
+    </div>
+    <div class="cartao">
+        <h2 class="titulo-secao">{{ titulo_ranking }}</h2>
+        <p class="subtitulo">As 10 primeiras na ordem escolhida</p>
+        <div class="mt-3">{{ grafico_ranking|safe }}</div>
+    </div>
 {% endblock %}

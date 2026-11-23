@@ -13,7 +13,7 @@ from django.utils.html import format_html
 from django.utils.text import slugify
 
 from . import decisao, graficos
-from .calculos import (FAIXAS_VEICULOS, MINIMO_PARA_INDICE, agregar, decimal, faixa_veiculos,
+from .calculos import (FAIXAS_VEICULOS, MINIMO_PARA_INDICE, agregar, candidatos, decimal, faixa_veiculos,
                        gravidade, inteiro_valido, media_mensal, numero, percentual,
                        sem_desconhecidos, separar_valores, tabela_gravidade, variacao,
                        vazio_como_zero)
@@ -246,30 +246,28 @@ def index(request):
     tabela_calor = pd.crosstab(recorte["dia_semana"], recorte["hora"]).reindex(
         index=DIAS_SEMANA, columns=range(24), fill_value=0)
 
-    # Mapa de árvore: tipos de acidente (os 10 maiores e "Outros")
-    tipos = recorte["tipo_acidente"].value_counts()
-    tabela_tipos = tipos.head(10).rename_axis("rotulo").reset_index(name="acidentes")
-    if tipos.iloc[10:].sum() > 0:
-        tabela_tipos.loc[len(tabela_tipos)] = ["Outros", tipos.iloc[10:].sum()]
+    # Mapa de árvore: tipos de acidente (os 10 maiores e "Outros"), com os mortos de cada um
+    tipos = (recorte.groupby("tipo_acidente").agg(acidentes=("id", "count"), mortos=("mortos", "sum"))
+             .sort_values("acidentes", ascending=False))
+    tabela_tipos = tipos.head(10).rename_axis("rotulo").reset_index()
+    if len(tipos) > 10:
+        tabela_tipos.loc[len(tabela_tipos)] = ["Outros", tipos["acidentes"].iloc[10:].sum(),
+                                               tipos["mortos"].iloc[10:].sum()]
 
-    # Barras 1: as 10 causas mais frequentes
-    tabela_causas = (recorte["causa_acidente"].value_counts().head(10)
-                     .rename_axis("causa").reset_index(name="acidentes"))
+    # Barras 1: causas (as 10 primeiras na ordem escolhida pelo usuário)
+    media = gravidade(recorte)
+    tabela_causas = candidatos(tabela_gravidade(recorte, "causa_acidente"), 10)
 
     # Barras 2: ranking de rodovias (ou de municípios, se uma BR foi escolhida)
     if f["br"] and not f["municipio"]:
-        titulo_ranking = f"Municípios da BR-{f['br']}"
+        titulo_ranking = f"Quais municípios da BR-{f['br']} concentram acidentes e mortes?"
         recorte_ranking = recorte.assign(nome=recorte["municipio"].str.title() + " - " + recorte["uf"])
     else:
-        titulo_ranking = "Rodovias federais"
+        titulo_ranking = "Quais rodovias concentram acidentes e mortes?"
         nomes = ("BR-" + recorte["br"].astype(str)).where(recorte["br"] > 0, "Rodovia não informada")
         recorte_ranking = recorte.assign(nome=nomes)
     medida = "mortos" if recorte["mortos"].sum() > 0 else "acidentes"
-    tabela_ranking = (
-        recorte_ranking.groupby("nome").agg(acidentes=("id", "count"), mortos=("mortos", "sum"))
-        .sort_values([medida, "acidentes"], ascending=False).head(10).reset_index()
-    )
-    titulo_ranking += " com mais mortos" if medida == "mortos" else " com mais acidentes"
+    tabela_ranking = candidatos(tabela_gravidade(recorte_ranking, "nome"), 10)
 
     html = graficos.para_html({
         "grafico_linha": graficos.grafico_linha(tabela_linha),
@@ -277,10 +275,8 @@ def index(request):
         "grafico_mapa": graficos.grafico_mapa(pontos),
         "grafico_calor": graficos.grafico_calor(tabela_calor),
         "grafico_tipos": graficos.grafico_arvore(tabela_tipos),
-        "grafico_causas": graficos.grafico_barras(tabela_causas, "causa", "acidentes", "acidentes"),
-        "grafico_ranking": graficos.grafico_barras(
-            tabela_ranking, "nome", medida, medida,
-            cor=graficos.VERMELHO if medida == "mortos" else graficos.GRAFITE),
+        "grafico_causas": graficos.grafico_condicao(tabela_causas, media, "acidentes", limite=10),
+        "grafico_ranking": graficos.grafico_condicao(tabela_ranking, media, medida, limite=10),
     })
     return mostrar(request, "index", f, {
         "kpis": kpis, "aviso_mapa": aviso_mapa, "titulo_ranking": titulo_ranking,
@@ -323,12 +319,12 @@ def condicoes(request):
                 "detalhe": f"{decimal(pior['indice'] / media)} vezes a média · {numero(pior['acidentes'])} acidentes",
             })
 
-    causas = tabela_gravidade(recorte, "causa_acidente")
-    causas = causas[causas["acidentes"] >= MINIMO_PARA_INDICE].nlargest(10, "indice")
+    causas = candidatos(tabela_gravidade(recorte, "causa_acidente"), 10)
     painel_causas = painel(
-        "Causas mais letais",
-        f"As 10 causas com mais mortos a cada 100 acidentes (mínimo de {MINIMO_PARA_INDICE} acidentes)",
-        graficos.grafico_condicao(causas, media, ordem="indice"),
+        "Quais causas matam mais?",
+        "As 10 primeiras na ordem escolhida · começa pelas mais letais "
+        f"(mortos a cada 100 acidentes, mínimo de {MINIMO_PARA_INDICE} acidentes)",
+        graficos.grafico_condicao(causas, media, ordem="indice", limite=10),
     )
     return mostrar(request, "condicoes", f, {
         "media": decimal(media), "destaques": destaques, "paineis": paineis,
@@ -433,16 +429,18 @@ def vitimas(request):
     # Vítimas por tipo de acidente (os 10 com mais vítimas)
     tipos = recorte.groupby("tipo_acidente")[["mortos", "feridos_graves", "feridos_leves"]].sum()
     tipos["vitimas"] = tipos.sum(axis=1)
-    tipos = tipos[tipos["vitimas"] > 0].nlargest(10, "vitimas").reset_index()
-    painel_tipos = painel("Vítimas por tipo de acidente", "Os 10 tipos com mais mortos e feridos",
-                          graficos.grafico_empilhado(tipos, "tipo_acidente", GRUPOS_PESSOAS[:3]))
+    tipos = tipos[tipos["vitimas"] > 0].reset_index()
+    tipos = candidatos(tipos, 10, ("vitimas", "mortos", "feridos_graves", "feridos_leves"), "tipo_acidente")
+    painel_tipos = painel("Quais tipos de acidente deixam mais vítimas?",
+                          "Os 10 primeiros na ordem escolhida · mortos, feridos graves e leves",
+                          graficos.grafico_empilhado(tipos, "tipo_acidente", GRUPOS_PESSOAS[:3], limite=10))
 
-    # Tipos mais letais
-    letais = tabela_gravidade(recorte, "tipo_acidente")
-    letais = letais[letais["acidentes"] >= MINIMO_PARA_INDICE].nlargest(10, "indice")
-    painel_letais = painel("Tipos de acidente mais letais",
-                           f"Mortos a cada 100 acidentes (mínimo de {MINIMO_PARA_INDICE} acidentes)",
-                           graficos.grafico_condicao(letais, media, ordem="indice"))
+    # Tipos de acidente: quantos, quantos mortos e o quanto matam
+    letais = candidatos(tabela_gravidade(recorte, "tipo_acidente"), 10)
+    painel_letais = painel("Quais tipos de acidente matam mais?",
+                           "Os 10 primeiros na ordem escolhida · começa pelos mais letais "
+                           f"(mínimo de {MINIMO_PARA_INDICE} acidentes)",
+                           graficos.grafico_condicao(letais, media, ordem="indice", limite=10))
 
     return mostrar(request, "vitimas", f, {
         "kpis": cartoes, "paineis": [rosca, painel_veiculos, painel_tipos, painel_letais],
@@ -606,14 +604,13 @@ def ficha(request):
     mensal = pd.concat([por_mes(recorte, ANO_ATUAL)] +
                        ([por_mes(anterior, ANO_ANTERIOR)] if anterior is not None else []), ignore_index=True)
 
-    tipos = (recorte["tipo_acidente"].value_counts().head(8)
-             .rename_axis("tipo").reset_index(name="acidentes"))
+    tipos = tabela_gravidade(recorte, "tipo_acidente")
     html = graficos.para_html({
         "grafico_mensal": graficos.grafico_anos(mensal, "acidentes", "acidentes"),
         "grafico_calor": graficos.grafico_calor(decisao.calor_ups(recorte, DIAS_SEMANA),
                                                 "de gravidade (UPS)", "UPS"),
         "grafico_grupos": graficos.grafico_grupos(grupos),
-        "grafico_tipos": graficos.grafico_barras(tipos, "tipo", "acidentes", "acidentes"),
+        "grafico_tipos": graficos.grafico_condicao(tipos, gravidade(recorte), "acidentes"),
         "grafico_mapa": graficos.grafico_mapa(recorte.dropna(subset=["latitude", "longitude"])),
     })
     return mostrar(request, "ficha", f, {

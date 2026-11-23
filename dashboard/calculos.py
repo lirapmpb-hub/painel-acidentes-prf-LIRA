@@ -2,6 +2,7 @@
 Medidas e formatação reaproveitadas por todas as páginas (equivale às
 medidas DAX do Power BI).
 """
+import pandas as pd
 
 # Abaixo deste número de acidentes, o índice de gravidade oscila demais
 # (1 morte em 3 acidentes daria 33,3) e não entra em destaques e rankings.
@@ -64,6 +65,18 @@ def agregar(recorte, chaves):
 def tabela_gravidade(recorte, coluna):
     """Acidentes, mortos e índice de gravidade de cada valor de uma coluna."""
     return agregar(recorte, coluna).rename(columns={coluna: "rotulo"})
+
+
+def candidatos(tabela, n, medidas=("acidentes", "mortos"), chave="rotulo"):
+    """
+    Junta os n primeiros de cada medida (e do índice, com acidentes suficientes).
+    Assim o gráfico pode mostrar os 10 primeiros em qualquer ordem que o
+    usuário escolher (por acidentes, mortos ou letalidade).
+    """
+    partes = [tabela.nlargest(n, m) for m in medidas]
+    if "indice" in tabela:
+        partes.append(tabela[tabela["acidentes"] >= MINIMO_PARA_INDICE].nlargest(n, "indice"))
+    return pd.concat(partes).drop_duplicates(subset=chave).reset_index(drop=True)
 
 
 def separar_valores(recorte, coluna, separador=";"):
