@@ -28,7 +28,9 @@ def chave_da_pagina(request):
 def em_cache(view):
     @wraps(view)
     def com_cache(request, *args, **kwargs):
-        if request.method != "GET":
+        # HEAD também: o Render checa "HEAD /" a cada poucos segundos, e sem cache
+        # cada checagem remontava a Visão geral inteira e ocupava a CPU do servidor.
+        if request.method not in ("GET", "HEAD"):
             return view(request, *args, **kwargs)
         chave = chave_da_pagina(request)
         comprimido = cache.get(chave)
