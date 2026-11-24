@@ -34,16 +34,21 @@ def ler_filtros(request, df):
         uf = ""
     do_estado = df[df["uf"] == uf] if uf else df
 
-    municipios = sorted(do_estado["municipio"].unique()) if uf else []
     municipio = get.get("municipio", "")
-    if municipio not in municipios:
+    if not uf or municipio not in set(do_estado["municipio"].unique()):
         municipio = ""
 
+    # Rodovias: só as que têm acidentes no município escolhido (ou no estado).
     # A PRF usa o número 0 quando a rodovia não foi informada; fica fora da lista.
-    rodovias = sorted(int(numero) for numero in do_estado["br"].unique() if numero > 0)
+    do_municipio = do_estado[do_estado["municipio"] == municipio] if municipio else do_estado
+    rodovias = sorted(int(numero) for numero in do_municipio["br"].unique() if numero > 0)
     br = inteiro_valido(get.get("br"), 0, 1, 999)
     if br not in rodovias:
         br = 0  # zero significa "todas as rodovias"
+
+    # Municípios: com uma BR escolhida, só os que ela atravessa (com acidentes registrados)
+    na_rodovia = do_estado[do_estado["br"] == br] if br else do_estado
+    municipios = sorted(na_rodovia["municipio"].unique()) if uf else []
 
     # Trecho de 10 km (200 = km 200 a 210). Só faz sentido com uma BR escolhida.
     trecho = inteiro_valido(get.get("trecho"), None, 0, 9990) if br else None

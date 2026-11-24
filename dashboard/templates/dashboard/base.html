@@ -139,7 +139,8 @@
             </div>
             <div class="lg:col-span-3">
                 <label for="municipio" class="rotulo">Município</label>
-                <select id="municipio" name="municipio" {% if not municipios %}disabled{% endif %} class="campo">
+                <!-- ao trocar o município ou a rodovia, recarrega para a outra lista mostrar só o que combina -->
+                <select id="municipio" name="municipio" onchange="this.form.submit()" {% if not municipios %}disabled{% endif %} class="campo">
                     <option value="">{% if uf %}Todos os municípios{% else %}Escolha um estado antes{% endif %}</option>
                     {% for nome in municipios %}
                     <option value="{{ nome }}" {% if nome == municipio %}selected{% endif %}>{{ nome }}</option>
@@ -148,7 +149,7 @@
             </div>
             <div class="lg:col-span-1">
                 <label for="br" class="rotulo">Rodovia</label>
-                <select id="br" name="br" class="campo !px-2">
+                <select id="br" name="br" onchange="this.form.submit()" class="campo !px-2">
                     <option value="">Todas</option>
                     {% for numero in rodovias %}
                     <option value="{{ numero }}" {% if numero == br %}selected{% endif %}>BR-{{ numero }}</option>
