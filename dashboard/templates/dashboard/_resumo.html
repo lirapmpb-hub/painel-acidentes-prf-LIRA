@@ -1,10 +1,23 @@
 <!-- RESUMO EXECUTIVO: frases geradas a partir dos números (ver decisao.resumo_executivo).
-     Uso: include com frases=lista e, opcional, titulo="..." -->
-<section class="cartao border-l-4 border-l-pm-vermelho">
-    <h2 class="titulo-secao">{{ titulo|default:"Resumo para decisão" }}</h2>
-    <ul class="mt-3 space-y-2 text-sm leading-relaxed text-pm-preto">
-        {% for frase in frases %}
+     Recolhido, mostra só a primeira frase numa linha; "Ver mais" abre as demais.
+     A escolha (aberto/fechado) fica guardada no navegador (ver script no base.html).
+     Uso: include com frases=lista -->
+<details class="resumo cartao !py-3 border-l-4 border-l-pm-vermelho">
+    <summary class="flex cursor-pointer list-none items-center gap-3 select-none">
+        <span class="shrink-0 rounded bg-pm-vermelho px-2 py-0.5 font-titulo text-[11px] font-bold uppercase tracking-wide text-white">Resumo</span>
+        <span class="min-w-0 flex-1 text-sm text-pm-preto line-clamp-2 sm:line-clamp-1">{{ frases.0 }}</span>
+        {% if frases|length > 1 %}
+        <span class="shrink-0 whitespace-nowrap font-titulo text-xs font-bold text-pm-cinza hover:text-pm-vermelho print:hidden">
+            <span class="so-fechado">Ver mais ({{ frases|length|add:"-1" }}) ▾</span>
+            <span class="so-aberto">Recolher ▴</span>
+        </span>
+        {% endif %}
+    </summary>
+    {% if frases|length > 1 %}
+    <ul class="mt-3 space-y-1.5 border-t border-pm-cinza-claro/60 pt-3 text-sm leading-relaxed text-pm-preto">
+        {% for frase in frases|slice:"1:" %}
         <li class="flex gap-2"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-pm-vermelho" aria-hidden="true"></span><span>{{ frase }}</span></li>
         {% endfor %}
     </ul>
-</section>
+    {% endif %}
+</details>

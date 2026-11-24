@@ -59,6 +59,11 @@
             clip-path: polygon(0 40%, 42% 40%, 45% 0, 100% 0, 100% 100%, 0 100%); }
         .faixa-pmpb-invertida { height: 10px; background: #e30613;
             clip-path: polygon(0 0, 55% 0, 58% 60%, 100% 60%, 100% 100%, 0 100%); }
+        /* Resumo para decisão recolhível (_resumo.html) */
+        details.resumo > summary::-webkit-details-marker { display: none; }
+        details.resumo[open] .so-fechado, details.resumo:not([open]) .so-aberto { display: none; }
+        details.resumo[open] > summary .line-clamp-1, details.resumo[open] > summary .line-clamp-2 {
+            -webkit-line-clamp: unset; display: block; overflow: visible; }
         /* Botões "Ordenar por" acima dos gráficos */
         .botao-ordem { border: 1px solid #c6c6c6; border-radius: 9999px; padding: 2px 10px; font-size: 12px;
             font-weight: 700; color: #706f6f; background: white; cursor: pointer; }
@@ -232,6 +237,22 @@
                 window.prompt("Copie o endereço:", location.href);
             }
             setTimeout(() => { botao.textContent = "Copiar link desta visão"; }, 2500);
+        });
+
+        // Resumo para decisão: lembra se a pessoa deixou aberto ou recolhido (vale para todas as abas)
+        const CHAVE_RESUMO = "painel-resumo-aberto";
+        document.querySelectorAll("details.resumo").forEach((resumo) => {
+            try { resumo.open = localStorage.getItem(CHAVE_RESUMO) === "1"; } catch (erro) {}
+            resumo.addEventListener("toggle", () => {
+                try { localStorage.setItem(CHAVE_RESUMO, resumo.open ? "1" : "0"); } catch (erro) {}
+            });
+        });
+        // Na impressão, o resumo sai sempre completo
+        window.addEventListener("beforeprint", () => {
+            document.querySelectorAll("details.resumo").forEach((r) => { r.dataset.estava = r.open; r.open = true; });
+        });
+        window.addEventListener("afterprint", () => {
+            document.querySelectorAll("details.resumo").forEach((r) => { r.open = r.dataset.estava === "true"; });
         });
 
         // Botões "Ordenar por": trocam a ordem das barras sem recarregar a página.
