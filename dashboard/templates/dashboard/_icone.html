@@ -1,0 +1,18 @@
+{% comment %}
+Ícones de linha (sem preenchimento) das abas. Uso: include com nome="casa" e, opcional, classe="h-5 w-5".
+A cor vem do texto em volta (currentColor).
+{% endcomment %}<svg class="{{ classe|default:'h-5 w-5' }} shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+{% if nome == "casa" %}
+    <path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/>
+{% elif nome == "grafico" %}
+    <path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="5" rx="0.5"/><rect x="12" y="8" width="3" height="9" rx="0.5"/><rect x="17" y="5" width="3" height="12" rx="0.5"/>
+{% elif nome == "local" %}
+    <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/>
+{% elif nome == "lupa" %}
+    <circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/>
+{% elif nome == "tendencia" %}
+    <path d="M3 17 9 11l4 4 8-8"/><path d="M15 7h6v6"/>
+{% elif nome == "organograma" %}
+    <rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M6 16v-2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/>
+{% endif %}
+</svg>

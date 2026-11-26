@@ -110,9 +110,12 @@
                 <div class="flex gap-1 overflow-x-auto">
                     {% for item in abas %}
                     <a href="{{ item.url }}" title="{{ item.pergunta }}" {% if item.ativa %}aria-current="page"{% endif %}
-                       class="group whitespace-nowrap rounded-t px-4 pt-2 pb-1.5 border-t-[3px] {% if item.ativa %}bg-pm-fundo text-pm-preto border-pm-vermelho{% else %}text-pm-cinza-claro hover:bg-white/10 hover:text-white border-transparent{% endif %}">
-                        <span class="block font-titulo text-sm font-bold leading-tight">{{ item.titulo }}</span>
-                        <span class="hidden md:block text-[11px] leading-tight {% if item.ativa %}text-pm-cinza{% else %}text-pm-cinza-medio group-hover:text-pm-cinza-claro{% endif %}">{{ item.pergunta }}</span>
+                       class="group flex items-center gap-2.5 whitespace-nowrap rounded-t px-4 pt-2 pb-1.5 border-t-[3px] {% if item.ativa %}bg-pm-fundo text-pm-preto border-pm-vermelho{% else %}text-pm-cinza-claro hover:bg-white/10 hover:text-white border-transparent{% endif %}">
+                        <span class="{% if item.ativa %}text-pm-vermelho{% endif %}">{% include "dashboard/_icone.html" with nome=item.icone classe="h-5 w-5 md:h-6 md:w-6" %}</span>
+                        <span>
+                            <span class="block font-titulo text-sm font-bold leading-tight">{{ item.titulo }}</span>
+                            <span class="hidden md:block text-[11px] leading-tight {% if item.ativa %}text-pm-cinza{% else %}text-pm-cinza-medio group-hover:text-pm-cinza-claro{% endif %}">{{ item.pergunta }}</span>
+                        </span>
                     </a>
                     {% endfor %}
                 </div>

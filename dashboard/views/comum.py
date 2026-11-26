@@ -12,14 +12,15 @@ from ..filtros import ler_filtros, link, recortar
 
 ANO_ANTERIOR = ANO_ATUAL - 1
 
-# Abas do painel: (nome da rota em urls.py, título no menu, pergunta que a aba responde)
+# Abas do painel: (nome da rota em urls.py, título no menu, pergunta que a aba responde,
+# ícone de _icone.html)
 ABAS = [
-    ("inicio", "Início", "O que é o painel"),
-    ("index", "Panorama", "Qual é a situação?"),
-    ("prioridades", "Onde agir", "Onde e quando agir?"),
-    ("por_que", "Por quê", "O que faz os acidentes matarem?"),
-    ("acompanhar", "Acompanhar", "Estamos melhorando?"),
-    ("estrutura", "Estrutura PRF", "Quem cobre cada área?"),
+    ("inicio", "Início", "O que é o painel", "casa"),
+    ("index", "Panorama", "Qual é a situação?", "grafico"),
+    ("prioridades", "Onde agir", "Onde e quando agir?", "local"),
+    ("por_que", "Por quê", "O que faz os acidentes matarem?", "lupa"),
+    ("acompanhar", "Acompanhar", "Estamos melhorando?", "tendencia"),
+    ("estrutura", "Estrutura PRF", "Quem cobre cada área?", "organograma"),
 ]
 
 # Textos do botão ⓘ dos cartões
@@ -86,9 +87,9 @@ def mostrar(request, aba, f, contexto):
         **contexto,
         "aba": aba,
         # o Início não leva filtros (com filtro, o endereço "/" vai para o Panorama)
-        "abas": [{"titulo": titulo, "pergunta": pergunta, "ativa": nome == aba,
+        "abas": [{"titulo": titulo, "pergunta": pergunta, "icone": icone, "ativa": nome == aba,
                   "url": reverse(nome) if nome == "inicio" else link(f, nome)}
-                 for nome, titulo, pergunta in ABAS],
+                 for nome, titulo, pergunta, icone in ABAS],
         "etiquetas": etiquetas_de_filtro(f, aba),
         "plotly_js": graficos.PLOTLY_JS,
         "link_exportar": link(f, "exportar"),

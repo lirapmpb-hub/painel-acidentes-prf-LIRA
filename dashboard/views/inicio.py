@@ -40,11 +40,12 @@ def inicio(request):
         return redirect(reverse("index") + "?" + request.GET.urlencode())
 
     base = resumo_da_base()
-    abas = [{"titulo": titulo, "pergunta": pergunta, "url": link_aba(nome) if nome != "inicio" else reverse("inicio"),
-             "ativa": nome == "inicio"} for nome, titulo, pergunta in ABAS]
-    cartoes = [{"titulo": titulo, "pergunta": pergunta, "itens": CONTEUDO_DAS_ABAS[nome],
+    abas = [{"titulo": titulo, "pergunta": pergunta, "icone": icone, "ativa": nome == "inicio",
+             "url": link_aba(nome) if nome != "inicio" else reverse("inicio")}
+            for nome, titulo, pergunta, icone in ABAS]
+    cartoes = [{"titulo": titulo, "pergunta": pergunta, "icone": icone, "itens": CONTEUDO_DAS_ABAS[nome],
                 "link_pb": link_aba(nome), "link_brasil": link_aba(nome, None)}
-               for nome, titulo, pergunta in ABAS if nome in CONTEUDO_DAS_ABAS]
+               for nome, titulo, pergunta, icone in ABAS if nome in CONTEUDO_DAS_ABAS]
     ultimo_mes = base["ultimo_mes"]
     return render(request, "dashboard/inicio.html", {
         "abas": abas, "cartoes": cartoes, "ano_atual": base["ano_atual"],

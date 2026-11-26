@@ -56,7 +56,9 @@
         <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {% for c in cartoes %}
             <article class="flex flex-col rounded-md border border-pm-cinza-claro/70 border-t-4 border-t-pm-preto bg-white p-4 shadow-sm hover:border-t-pm-vermelho">
-                <h3 class="font-titulo text-base font-black text-pm-preto">{{ c.titulo }}</h3>
+                <h3 class="flex items-center gap-2 font-titulo text-base font-black text-pm-preto">
+                    <span class="text-pm-vermelho">{% include "dashboard/_icone.html" with nome=c.icone classe="h-5 w-5" %}</span>{{ c.titulo }}
+                </h3>
                 <p class="text-sm font-bold text-pm-vermelho-escuro">{{ c.pergunta }}</p>
                 <ul class="mt-3 flex-1 space-y-1.5 text-sm text-pm-preto/80">
                     {% for item in c.itens %}
