@@ -1,0 +1,63 @@
+{% extends "dashboard/base.html" %}
+{% block titulo %}Por quê{% endblock %}
+
+{% block conteudo %}
+    <section class="cartao">
+        <h2 class="titulo-secao">O que faz os acidentes matarem?</h2>
+        <p class="mt-2 text-sm text-pm-preto/80">
+            Cada gráfico tem três colunas: <b>quantos acidentes</b> aconteceram, <b>quantas pessoas morreram</b> e
+            <b>quantos mortos a cada 100 acidentes</b> (a letalidade). Na letalidade, as barras rosadas estão acima da média
+            deste filtro (<b>{{ media }}</b>, a linha pontilhada) e as cinzas, abaixo.
+            Use os botões <b>Ordenar por</b> para reorganizar as barras.
+        </p>
+    </section>
+
+    <!-- CONDIÇÕES DA VIA E DO AMBIENTE -->
+    <h2 id="condicoes" class="titulo-bloco">Condições da via e do ambiente</h2>
+    {% if destaques %}
+    <section>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for d in destaques %}
+            <div class="bg-white rounded-md shadow-sm border border-pm-cinza-claro/70 border-t-4 border-t-pm-vermelho p-4">
+                <p class="font-titulo text-xs font-bold uppercase tracking-wide text-pm-cinza">{{ d.titulo }}: a mais letal</p>
+                <p class="mt-1 font-titulo text-xl font-black text-pm-preto">{{ d.valor }}</p>
+                <p class="mt-1 text-sm text-pm-preto/80">{{ d.texto }}</p>
+                <p class="text-xs text-pm-cinza">{{ d.detalhe }}</p>
+            </div>
+            {% endfor %}
+        </div>
+        <p class="mt-2 text-xs text-pm-cinza">Só entram nos destaques categorias com pelo menos {{ minimo }} acidentes, para evitar conclusões a partir de poucos casos.</p>
+    </section>
+    {% endif %}
+
+    <details class="cartao !p-0" open>
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 select-none">
+            <span class="font-titulo text-sm font-bold">Gráficos de cada condição <span class="font-sans font-normal text-pm-cinza">(fase do dia, tempo, pista, área, traçado e sentido)</span></span>
+            <span class="shrink-0 font-titulo text-xs font-bold text-pm-cinza hover:text-pm-vermelho"><span class="so-fechado">Mostrar ▾</span><span class="so-aberto">Recolher ▴</span></span>
+        </summary>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 border-t border-pm-cinza-claro/60 bg-pm-fundo/60 p-4">
+            {% for p in paineis_condicoes %}
+            {% include "dashboard/_painel.html" with p=p %}
+            {% endfor %}
+        </div>
+    </details>
+
+    <!-- CAUSAS -->
+    <h2 id="causas" class="titulo-bloco">Causas</h2>
+    {% include "dashboard/_painel.html" with p=causas %}
+
+    <!-- TIPOS DE ACIDENTE -->
+    <h2 id="tipos" class="titulo-bloco">Tipos de acidente</h2>
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {% include "dashboard/_painel.html" with p=letais %}
+        {% include "dashboard/_painel.html" with p=vitimas_por_tipo %}
+    </section>
+
+    <!-- VÍTIMAS -->
+    <h2 id="vitimas" class="titulo-bloco">Vítimas</h2>
+    {% include "dashboard/_cartoes.html" with kpis=kpis_vitimas colunas="lg:grid-cols-3 xl:grid-cols-6" %}
+    <section id="veiculos" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {% include "dashboard/_painel.html" with p=rosca %}
+        {% include "dashboard/_painel.html" with p=veiculos %}
+    </section>
+{% endblock %}

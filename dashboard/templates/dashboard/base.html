@@ -53,15 +53,21 @@
             .subtitulo { @apply text-sm text-pm-cinza; }
             .campo { @apply w-full rounded border border-pm-cinza-claro bg-white px-3 py-2 text-sm text-pm-preto focus:border-pm-vermelho focus:outline-none focus:ring-2 focus:ring-pm-vermelho/20 disabled:bg-pm-fundo disabled:text-pm-cinza-medio; }
             .rotulo { @apply block text-xs font-titulo font-semibold uppercase tracking-wide text-pm-cinza mb-1; }
+            /* Título de cada bloco grande da página (as seções do "Nesta página") */
+            .titulo-bloco { @apply font-titulo text-lg font-black uppercase tracking-wide text-pm-preto flex items-center gap-3; }
+            .titulo-bloco::after { content: ""; @apply h-px flex-1 bg-pm-cinza-claro; }
         }
         /* Faixa vermelha com o "degrau" diagonal da capa do MIV */
         .faixa-pmpb { height: 10px; background: #e30613;
             clip-path: polygon(0 40%, 42% 40%, 45% 0, 100% 0, 100% 100%, 0 100%); }
         .faixa-pmpb-invertida { height: 10px; background: #e30613;
             clip-path: polygon(0 0, 55% 0, 58% 60%, 100% 60%, 100% 100%, 0 100%); }
-        /* Resumo para decisão recolhível (_resumo.html) */
-        details.resumo > summary::-webkit-details-marker { display: none; }
-        details.resumo[open] .so-fechado, details.resumo:not([open]) .so-aberto { display: none; }
+        /* Os atalhos "Nesta página" param a seção logo abaixo da barra de filtros fixa */
+        [id] { scroll-margin-top: 5.5rem; }
+        html { scroll-behavior: smooth; }
+        /* Partes recolhíveis (<details>): sem o triângulo padrão; textos de aberto/fechado */
+        details > summary::-webkit-details-marker { display: none; }
+        details[open] > summary .so-fechado, details:not([open]) > summary .so-aberto { display: none; }
         details.resumo[open] > summary .line-clamp-1, details.resumo[open] > summary .line-clamp-2 {
             -webkit-line-clamp: unset; display: block; overflow: visible; }
         /* Botões "Ordenar por" acima dos gráficos */
@@ -82,140 +88,164 @@
 </head>
 <body class="bg-pm-fundo text-pm-preto font-sans antialiased">
 
-    <!-- Cabeçalho no padrão do MIV: faixa preta, brasão, dístico e faixa vermelha -->
+    <!-- Cabeçalho no padrão do MIV: faixa preta, brasão, dístico, abas e faixa vermelha -->
     <header class="bg-pm-preto text-white">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-5">
-            <div class="flex items-center gap-4 sm:gap-5">
-                <img src="{% static 'dashboard/brasao-pmpb.png' %}" alt="Brasão da Polícia Militar da Paraíba" class="h-16 sm:h-20 w-auto shrink-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-4">
+            <div class="flex items-center gap-4">
+                <img src="{% static 'dashboard/brasao-pmpb.png' %}" alt="Brasão da Polícia Militar da Paraíba" class="h-14 sm:h-16 w-auto shrink-0">
                 <div class="min-w-0">
-                    <p class="font-titulo text-xs sm:text-sm font-extrabold uppercase leading-tight tracking-wide">Polícia Militar da Paraíba</p>
-                    <h1 class="mt-1 font-titulo text-xl sm:text-3xl font-black leading-tight">Painel de Acidentes nas Rodovias Federais</h1>
-                    <p class="mt-1 text-xs text-pm-cinza-claro">Dados abertos da Polícia Rodoviária Federal · {{ ano_atual }}</p>
+                    <p class="font-titulo text-xs font-extrabold uppercase leading-tight tracking-wide">Polícia Militar da Paraíba</p>
+                    <h1 class="mt-0.5 font-titulo text-xl sm:text-2xl font-black leading-tight">Painel de Acidentes nas Rodovias Federais</h1>
+                    <p class="mt-0.5 text-xs text-pm-cinza-claro">Dados abertos da Polícia Rodoviária Federal · {{ ano_atual }}</p>
                 </div>
             </div>
+            <!-- Só na impressão: o que está sendo mostrado (na tela, isso fica na barra de filtros) -->
+            <p class="hidden print:block mt-3 text-sm">Exibindo: <b>{{ local }}</b> · {{ texto_periodo }} · {{ descricao_filtro }}</p>
 
-            <p class="mt-4 text-sm text-pm-cinza-claro">Exibindo: <span class="font-bold text-white">{{ local }}</span> · {{ texto_periodo }} · {{ descricao_filtro }}</p>
-
-            <!-- Filtros em uso: cada etiqueta tira o seu filtro -->
-            <div class="mt-2 flex flex-wrap items-center gap-2 print:hidden">
-                {% for e in etiquetas %}
-                <a href="{{ e.link }}" class="inline-flex items-center gap-2 rounded-full bg-pm-vermelho px-3 py-1 text-xs font-bold text-white hover:bg-pm-vermelho-escuro" title="Tirar este filtro">
-                    {{ e.texto }} <span aria-hidden="true">✕</span><span class="sr-only">tirar este filtro</span>
-                </a>
-                {% endfor %}
-                <button type="button" id="copiar-link" class="inline-flex items-center gap-1 rounded-full border border-pm-cinza px-3 py-1 text-xs font-bold text-pm-cinza-claro hover:border-white hover:text-white" title="Copia o endereço desta página, com os filtros, para enviar a outra pessoa">
-                    Copiar link desta visão
-                </button>
-            </div>
-
-            <!-- Abas: cada link mantém os filtros atuais -->
-            <nav class="mt-5 flex items-end justify-between gap-4 print:hidden">
+            <!-- Abas: cada link mantém os filtros atuais; o subtítulo diz a pergunta que a aba responde -->
+            <nav class="mt-4 flex items-end justify-between gap-4 print:hidden" aria-label="Abas do painel">
                 <div class="flex gap-1 overflow-x-auto">
                     {% for item in abas %}
-                    <a href="{{ item.url }}" class="whitespace-nowrap rounded-t px-4 py-2 font-titulo text-sm font-bold {% if item.ativa %}bg-pm-fundo text-pm-preto border-t-[3px] border-pm-vermelho{% else %}text-pm-cinza-claro hover:bg-white/10 hover:text-white border-t-[3px] border-transparent{% endif %}">{{ item.titulo }}</a>
+                    <a href="{{ item.url }}" title="{{ item.pergunta }}" {% if item.ativa %}aria-current="page"{% endif %}
+                       class="group whitespace-nowrap rounded-t px-4 pt-2 pb-1.5 border-t-[3px] {% if item.ativa %}bg-pm-fundo text-pm-preto border-pm-vermelho{% else %}text-pm-cinza-claro hover:bg-white/10 hover:text-white border-transparent{% endif %}">
+                        <span class="block font-titulo text-sm font-bold leading-tight">{{ item.titulo }}</span>
+                        <span class="hidden md:block text-[11px] leading-tight {% if item.ativa %}text-pm-cinza{% else %}text-pm-cinza-medio group-hover:text-pm-cinza-claro{% endif %}">{{ item.pergunta }}</span>
+                    </a>
                     {% endfor %}
                 </div>
                 <a href="{{ link_exportar }}" class="mb-2 hidden sm:inline-block whitespace-nowrap rounded border border-pm-cinza px-3 py-1.5 text-xs font-bold text-white hover:border-pm-vermelho hover:bg-pm-vermelho" title="Baixa os acidentes do filtro atual, com as 30 colunas da PRF">Baixar CSV</a>
             </nav>
-            <div class="hidden print:block h-4"></div>
         </div>
     </header>
-    <div class="faixa-pmpb" aria-hidden="true"></div>
+    <div class="faixa-pmpb print:hidden" aria-hidden="true"></div>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <!-- BARRA DE FILTROS: fica fixa no topo ao rolar. Recolhida, mostra só o que
+         está filtrado; "Editar filtros" abre o formulário. -->
+    <div class="sticky top-0 z-40 border-b border-pm-cinza-claro/70 bg-white/95 shadow-sm backdrop-blur print:hidden">
+        <details id="barra-filtros" class="max-w-7xl mx-auto px-4 sm:px-6">
+            <summary class="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-2 py-2.5 select-none">
+                <span class="font-titulo text-[11px] font-bold uppercase tracking-wide text-pm-cinza">Exibindo</span>
+                <span class="text-sm"><b>{{ local }}</b> <span class="text-pm-cinza">· {{ texto_periodo }} · {{ descricao_filtro }}</span></span>
+                {% for e in etiquetas %}
+                <a href="{{ e.link }}" class="inline-flex items-center gap-1.5 rounded-full bg-pm-vermelho px-2.5 py-0.5 text-xs font-bold text-white hover:bg-pm-vermelho-escuro" title="Tirar este filtro">
+                    {{ e.texto }} <span aria-hidden="true">✕</span><span class="sr-only">tirar este filtro</span>
+                </a>
+                {% endfor %}
+                <span class="ml-auto flex items-center gap-2">
+                    <button type="button" id="copiar-link" class="rounded-full border border-pm-cinza-claro px-3 py-1 text-xs font-bold text-pm-cinza hover:border-pm-preto hover:text-pm-preto" title="Copia o endereço desta página, com os filtros, para enviar a outra pessoa">Copiar link</button>
+                    <span class="rounded bg-pm-preto px-3 py-1.5 font-titulo text-xs font-bold text-white hover:bg-pm-vermelho">
+                        <span class="so-fechado">Editar filtros ▾</span><span class="so-aberto">Fechar ▴</span>
+                    </span>
+                </span>
+            </summary>
 
-        <!-- FILTROS: ao clicar em Filtrar, a página recarrega com as escolhas na URL -->
-        <form method="get" action="" class="cartao grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end print:hidden">
-            {% block campos_extras %}{% endblock %}
-            <div class="lg:col-span-2">
-                <label for="uf" class="rotulo">Estado</label>
-                <!-- onchange: ao trocar o estado, recarrega para mostrar os municípios e BRs dele -->
-                <select id="uf" name="uf" onchange="this.form.submit()" class="campo">
-                    <option value="">Todos os estados</option>
-                    {% for nome, sigla in estados %}
-                    <option value="{{ sigla }}" {% if sigla == uf %}selected{% endif %}>{{ nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="lg:col-span-3">
-                <label for="municipio" class="rotulo">Município</label>
-                <!-- ao trocar o município ou a rodovia, recarrega para a outra lista mostrar só o que combina -->
-                <select id="municipio" name="municipio" onchange="this.form.submit()" {% if not municipios %}disabled{% endif %} class="campo">
-                    <option value="">{% if uf %}Todos os municípios{% else %}Escolha um estado antes{% endif %}</option>
-                    {% for nome in municipios %}
-                    <option value="{{ nome }}" {% if nome == municipio %}selected{% endif %}>{{ nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="lg:col-span-1">
-                <label for="br" class="rotulo">Rodovia</label>
-                <select id="br" name="br" onchange="this.form.submit()" class="campo !px-2">
-                    <option value="">Todas</option>
-                    {% for numero in rodovias %}
-                    <option value="{{ numero }}" {% if numero == br %}selected{% endif %}>BR-{{ numero }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="lg:col-span-2">
-                <label for="classificacao" class="rotulo">Gravidade</label>
-                <select id="classificacao" name="classificacao" class="campo">
-                    <option value="">Todos os acidentes</option>
-                    {% for nome in classificacoes %}
-                    <option value="{{ nome }}" {% if nome == classificacao %}selected{% endif %}>{{ nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="lg:col-span-1">
-                <label for="mes_inicio" class="rotulo">De</label>
-                <select id="mes_inicio" name="mes_inicio" class="campo !px-2">
-                    {% for numero, nome in meses %}
-                    <option value="{{ numero }}" {% if numero == mes_inicio %}selected{% endif %}>{{ nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="lg:col-span-1">
-                <label for="mes_fim" class="rotulo">Até</label>
-                <select id="mes_fim" name="mes_fim" class="campo !px-2">
-                    {% for numero, nome in meses %}
-                    <option value="{{ numero }}" {% if numero == mes_fim %}selected{% endif %}>{{ nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="lg:col-span-2 flex gap-2">
-                <button type="submit" class="flex-1 rounded bg-pm-vermelho px-4 py-2 font-titulo text-sm font-bold uppercase tracking-wide text-white hover:bg-pm-vermelho-escuro">Filtrar</button>
-                {% if filtro_ativo %}
-                <a href="{{ link_limpar }}" class="rounded border border-pm-preto px-3 py-2 font-titulo text-sm font-bold text-pm-preto hover:bg-pm-preto hover:text-white">Limpar</a>
-                {% endif %}
-            </div>
-
-            <!-- FILTROS AVANÇADOS: abrem e fecham; já vêm abertos se algum estiver em uso -->
-            <details class="sm:col-span-2 lg:col-span-12 border-t border-pm-cinza-claro/60 pt-3" {% if avancados_ativos %}open{% endif %}>
-                <summary class="cursor-pointer select-none font-titulo text-sm font-bold text-pm-cinza hover:text-pm-vermelho">
-                    Filtros avançados{% if avancados_ativos %} <span class="ml-1 rounded-full bg-pm-vermelho px-2 py-0.5 text-xs text-white">{{ avancados_ativos }}</span>{% endif %}
-                </summary>
-                <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-                    {% for campo in avancados %}
-                    <div>
-                        <label for="{{ campo.nome }}" class="rotulo">{{ campo.rotulo }}</label>
-                        <select id="{{ campo.nome }}" name="{{ campo.nome }}" {% if campo.recarrega %}onchange="this.form.submit()"{% endif %} {% if campo.desativado %}disabled{% endif %} class="campo">
-                            <option value="">{{ campo.vazio }}</option>
-                            {% for opcao in campo.opcoes %}
-                            <option value="{{ opcao }}" {% if opcao == campo.valor %}selected{% endif %}>{{ opcao }}</option>
+            <!-- FILTROS: ao clicar em Filtrar, a página recarrega com as escolhas na URL -->
+            <form method="get" action="" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end border-t border-pm-cinza-claro/60 py-4">
+                {% block campos_extras %}{% endblock %}
+                <div class="lg:col-span-2">
+                    <label for="uf" class="rotulo">Estado</label>
+                    <!-- trocar estado, município ou rodovia recarrega para as outras listas mostrarem só o que combina -->
+                    <select id="uf" name="uf" onchange="recarregarFiltros(this.form)" class="campo">
+                        <option value="">Todos os estados</option>
+                        {% for nome, sigla in estados %}
+                        <option value="{{ sigla }}" {% if sigla == uf %}selected{% endif %}>{{ nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="lg:col-span-3">
+                    <label for="municipio" class="rotulo">Município</label>
+                    <select id="municipio" name="municipio" onchange="recarregarFiltros(this.form)" {% if not municipios %}disabled{% endif %} class="campo">
+                        <option value="">{% if uf %}Todos os municípios{% else %}Escolha um estado antes{% endif %}</option>
+                        {% for nome in municipios %}
+                        <option value="{{ nome }}" {% if nome == municipio %}selected{% endif %}>{{ nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="lg:col-span-1">
+                    <label for="br" class="rotulo">Rodovia</label>
+                    <select id="br" name="br" onchange="recarregarFiltros(this.form)" class="campo !px-2">
+                        <option value="">Todas</option>
+                        {% for numero in rodovias %}
+                        <option value="{{ numero }}" {% if numero == br %}selected{% endif %}>BR-{{ numero }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="lg:col-span-2">
+                    <label for="classificacao" class="rotulo">Gravidade</label>
+                    <select id="classificacao" name="classificacao" class="campo">
+                        <option value="">Todos os acidentes</option>
+                        {% for nome in classificacoes %}
+                        <option value="{{ nome }}" {% if nome == classificacao %}selected{% endif %}>{{ nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <fieldset class="lg:col-span-2">
+                    <legend class="rotulo">Período de {{ ano_atual }}</legend>
+                    <div class="flex items-center gap-1.5">
+                        <label for="mes_inicio" class="sr-only">De</label>
+                        <select id="mes_inicio" name="mes_inicio" class="campo !px-2">
+                            {% for numero, nome in meses %}
+                            <option value="{{ numero }}" {% if numero == mes_inicio %}selected{% endif %}>{{ nome }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="text-xs text-pm-cinza">a</span>
+                        <label for="mes_fim" class="sr-only">Até</label>
+                        <select id="mes_fim" name="mes_fim" class="campo !px-2">
+                            {% for numero, nome in meses %}
+                            <option value="{{ numero }}" {% if numero == mes_fim %}selected{% endif %}>{{ nome }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    {% endfor %}
+                </fieldset>
+                <div class="lg:col-span-2 flex gap-2">
+                    <button type="submit" class="flex-1 rounded bg-pm-vermelho px-4 py-2 font-titulo text-sm font-bold uppercase tracking-wide text-white hover:bg-pm-vermelho-escuro">Filtrar</button>
+                    {% if filtro_ativo %}
+                    <a href="{{ link_limpar }}" class="rounded border border-pm-preto px-3 py-2 font-titulo text-sm font-bold text-pm-preto hover:bg-pm-preto hover:text-white">Limpar</a>
+                    {% endif %}
                 </div>
-            </details>
-        </form>
+
+                <!-- FILTROS AVANÇADOS: abrem e fecham; já vêm abertos se algum estiver em uso -->
+                <details class="sm:col-span-2 lg:col-span-12 border-t border-pm-cinza-claro/60 pt-3" {% if avancados_ativos %}open{% endif %}>
+                    <summary class="cursor-pointer list-none select-none font-titulo text-sm font-bold text-pm-cinza hover:text-pm-vermelho">
+                        <span class="so-fechado">▸</span><span class="so-aberto">▾</span> Filtros avançados{% if avancados_ativos %} <span class="ml-1 rounded-full bg-pm-vermelho px-2 py-0.5 text-xs text-white">{{ avancados_ativos }}</span>{% endif %}
+                    </summary>
+                    <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+                        {% for campo in avancados %}
+                        <div>
+                            <label for="{{ campo.nome }}" class="rotulo">{{ campo.rotulo }}</label>
+                            <select id="{{ campo.nome }}" name="{{ campo.nome }}" {% if campo.recarrega %}onchange="recarregarFiltros(this.form)"{% endif %} {% if campo.desativado %}disabled{% endif %} class="campo">
+                                <option value="">{{ campo.vazio }}</option>
+                                {% for opcao in campo.opcoes %}
+                                <option value="{{ opcao }}" {% if opcao == campo.valor %}selected{% endif %}>{{ opcao }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </details>
+            </form>
+        </details>
+    </div>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+        {% if secoes %}
+        <!-- Atalhos para as seções desta página -->
+        <nav class="-mb-2 flex flex-wrap items-center gap-x-1 gap-y-2 text-sm print:hidden" aria-label="Nesta página">
+            <span class="mr-1 font-titulo text-[11px] font-bold uppercase tracking-wide text-pm-cinza">Nesta página</span>
+            {% for ancora, titulo in secoes %}
+            <a href="#{{ ancora }}" class="rounded-full border border-pm-cinza-claro bg-white px-3 py-1 text-xs font-bold text-pm-preto hover:border-pm-vermelho hover:text-pm-vermelho">{{ titulo }}</a>
+            {% endfor %}
+        </nav>
+        {% endif %}
 
         {% block conteudo %}{% endblock %}
 
         <!-- Glossário: como ler os indicadores -->
         <details class="cartao print:hidden" id="glossario">
-            <summary class="cursor-pointer select-none font-titulo text-sm font-bold text-pm-preto hover:text-pm-vermelho">ⓘ Como ler este painel: o que significa cada indicador</summary>
+            <summary class="cursor-pointer list-none select-none font-titulo text-sm font-bold text-pm-preto hover:text-pm-vermelho">ⓘ Como ler este painel: o que significa cada indicador <span class="so-fechado text-pm-cinza">▾</span><span class="so-aberto text-pm-cinza">▴</span></summary>
             <dl class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
-                <div><dt class="font-bold">Índice de gravidade</dt><dd class="text-pm-preto/80">Mortos a cada 100 acidentes. Mostra o quanto os acidentes são letais, independentemente de quantos acontecem. Só entra em destaques e rankings quando há pelo menos 30 acidentes.</dd></div>
+                <div><dt class="font-bold">Índice de gravidade (letalidade)</dt><dd class="text-pm-preto/80">Mortos a cada 100 acidentes. Mostra o quanto os acidentes são letais, independentemente de quantos acontecem. Só entra em destaques e rankings quando há pelo menos 30 acidentes.</dd></div>
                 <div><dt class="font-bold">Gravidade (UPS)</dt><dd class="text-pm-preto/80">Unidade Padrão de Severidade, do DENATRAN. Cada acidente vale 1 se não teve vítimas, 4 se teve feridos, 6 se teve pedestre ferido e 13 se teve morte. A soma mede a gravidade total e é usada para priorizar: um trecho com poucas batidas e várias mortes fica à frente de um com muitas batidas leves.</dd></div>
                 <div><dt class="font-bold">Trecho</dt><dd class="text-pm-preto/80">10 km de uma BR dentro de um estado (ex.: BR-230, km 20 a 30, na PB). A quilometragem recomeça em cada divisa.</dd></div>
                 <div><dt class="font-bold">Janela de risco</dt><dd class="text-pm-preto/80">Um dia da semana e uma faixa de 3 horas (ex.: sexta-feira, das 18h às 21h). "2,5 vezes a média" quer dizer que a janela tem 2,5 vezes a gravidade de uma janela qualquer da semana.</dd></div>
@@ -228,8 +258,23 @@
     </main>
 
     <script>
-        // Botão "Copiar link desta visão": copia o endereço com os filtros
+        // Filtros que recarregam a página (estado, município, rodovia, regional):
+        // a barra de filtros volta aberta, para continuar escolhendo.
+        const CHAVE_FILTROS = "painel-filtros-abertos";
+        function recarregarFiltros(formulario) {
+            try { sessionStorage.setItem(CHAVE_FILTROS, "1"); } catch (erro) {}
+            formulario.submit();
+        }
+        try {
+            if (sessionStorage.getItem(CHAVE_FILTROS) === "1") {
+                document.getElementById("barra-filtros").open = true;
+                sessionStorage.removeItem(CHAVE_FILTROS);
+            }
+        } catch (erro) {}
+
+        // Botão "Copiar link": copia o endereço com os filtros (sem abrir/fechar a barra)
         document.getElementById("copiar-link")?.addEventListener("click", async (evento) => {
+            evento.preventDefault();
             const botao = evento.currentTarget;
             try {
                 await navigator.clipboard.writeText(location.href);
@@ -237,7 +282,7 @@
             } catch (erro) {
                 window.prompt("Copie o endereço:", location.href);
             }
-            setTimeout(() => { botao.textContent = "Copiar link desta visão"; }, 2500);
+            setTimeout(() => { botao.textContent = "Copiar link"; }, 2500);
         });
 
         // Resumo para decisão: lembra se a pessoa deixou aberto ou recolhido (vale para todas as abas)
@@ -277,6 +322,13 @@
             Plotly.react(grafico, grafico.data, layout);
             caixa.querySelectorAll(".botao-ordem").forEach((b) => b.setAttribute("aria-pressed", b === botao));
         });
+
+        // Gráficos dentro de partes recolhíveis: ao abrir, ajustam a largura
+        document.addEventListener("toggle", (evento) => {
+            if (evento.target.open) {
+                evento.target.querySelectorAll(".js-plotly-plot").forEach((g) => Plotly.Plots.resize(g));
+            }
+        }, true);
     </script>
 
     <!-- Rodapé no padrão do slide de fechamento do MIV -->

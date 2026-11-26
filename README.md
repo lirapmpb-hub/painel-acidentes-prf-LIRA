@@ -2,20 +2,17 @@
 
 Painel web com os acidentes registrados pela Polícia Rodoviária Federal (PRF) nas rodovias federais, de 2023 a 2026, com o visual baseado no Manual de Identidade Visual da Polícia Militar da Paraíba.
 
-O painel é voltado para a tomada de decisão: responde **onde, quando e o que fazer**. Os filtros cobrem estado, município, rodovia, gravidade e período, e o painel tem oito abas:
+O painel é voltado para a tomada de decisão: responde **onde, quando e o que fazer**. Os filtros (estado, município, rodovia, gravidade, período e avançados) ficam numa barra fixa no topo, e o painel tem cinco abas, cada uma respondendo a uma pergunta:
 
-| Aba | O que mostra |
-| --- | --- |
-| Visão geral | Resumo para decisão, totais com variação sobre o ano anterior, mapa, dia e hora, tipos e causas |
-| Onde agir | Trechos priorizados pela gravidade (UPS) com tendência, mapa de calor da gravidade, sugestão de escala (janelas de risco) e causas por quem pode agir |
-| Condições | Clima, fase do dia, pista e traçado: onde os acidentes matam mais |
-| Trechos críticos | Trechos de 10 km com mais mortes e perfil de cada BR |
-| Vítimas | Mortos, feridos e ilesos por tipo de acidente |
-| Estrutura PRF | Regionais, delegacias e unidades operacionais |
-| Comparação anual | O mesmo período em 2023, 2024, 2025 e 2026 |
-| Metas e avaliação | Acompanhamento de meta de redução e avaliação antes/depois de uma ação |
+| Aba | Pergunta | O que mostra |
+| --- | --- | --- |
+| Panorama | Qual é a situação? | Resumo para decisão, totais com variação sobre o ano anterior, evolução mensal, mapa, dia e hora, tipos e rodovias |
+| Onde agir | Onde e quando agir? | Trechos priorizados pela gravidade (UPS) com tendência, mapa de calor da gravidade, sugestão de escala, causas por quem pode agir, perfil da BR e ranking completo dos trechos |
+| Por quê | O que faz os acidentes matarem? | Condições da via e do ambiente, causas, tipos de acidente, vítimas e veículos |
+| Acompanhar | Estamos melhorando? | Meta de redução, antes e depois de uma ação e comparação entre os anos |
+| Estrutura PRF | Quem cobre cada área? | Regionais, delegacias e unidades operacionais |
 
-Além das abas, a **Ficha do trecho** (`/ficha/?uf=PB&br=230&trecho=20`) reúne tudo de um trecho de 10 km, com recomendações, e pode ser impressa ou salva em PDF.
+Além das abas, a **Ficha do trecho** (`/ficha/?uf=PB&br=230&trecho=20`) reúne tudo de um trecho de 10 km, com recomendações, e pode ser impressa ou salva em PDF. Os endereços das abas antigas (`/condicoes/`, `/trechos/`, `/vitimas/`, `/anos/`, `/metas/`) redirecionam para as novas.
 
 Indicadores usados para priorizar:
 
@@ -63,7 +60,8 @@ dashboard/
   calculos.py    índices e agregações
   decisao.py     UPS, prioridades, janelas de risco, causas por responsável, metas e textos
   graficos.py    gráficos (Plotly) e paleta de cores
-  views.py       uma função por aba
+  views/         um arquivo por aba (panorama, onde_agir, por_que, acompanhar, estrutura, ficha)
+  tests.py       testes automáticos (python manage.py test)
   templates/     páginas HTML (Tailwind CSS)
   static/        brasão da PMPB
 data/            datatran2023.csv a datatran2026.csv
