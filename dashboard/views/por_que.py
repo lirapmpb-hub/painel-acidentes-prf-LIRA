@@ -10,8 +10,8 @@ from ..calculos import (FAIXAS_VEICULOS, MINIMO_PARA_INDICE, candidatos, decimal
                         tabela_gravidade, vazio_como_zero)
 from .comum import mostrar, painel, preparar
 
-SECOES = [("condicoes", "Condições"), ("causas", "Causas"), ("tipos", "Tipos de acidente"),
-          ("vitimas", "Vítimas"), ("veiculos", "Veículos")]
+SECOES = [("condicoes", "Condições da via e do tempo"), ("causas", "Causas"),
+          ("tipos", "Tipos de acidente"), ("vitimas", "Vítimas e veículos")]
 
 DIMENSOES = [
     # (coluna, título, explicação)

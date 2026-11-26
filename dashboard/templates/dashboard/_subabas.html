@@ -1,0 +1,9 @@
+<!-- SUBABAS da aba atual. Uso: include, com secoes = [(id, título)] vindo da view.
+     Cada parte da página tem id igual e o atributo data-subaba; o script do
+     base.html mostra só a escolhida. -->
+<nav class="flex overflow-x-auto border-b-2 border-pm-cinza-claro print:hidden" role="tablist" aria-label="Partes desta aba">
+    {% for ancora, titulo in secoes %}
+    <a href="#{{ ancora }}" role="tab" data-subaba-link="{{ ancora }}" aria-controls="{{ ancora }}"
+       aria-selected="{% if forloop.first %}true{% else %}false{% endif %}" class="subaba">{{ titulo }}</a>
+    {% endfor %}
+</nav>

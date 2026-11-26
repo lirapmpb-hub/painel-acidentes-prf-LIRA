@@ -40,13 +40,15 @@
             <button type="submit" class="w-full rounded bg-pm-vermelho px-4 py-2 font-titulo text-sm font-bold uppercase tracking-wide text-white hover:bg-pm-vermelho-escuro">Calcular</button>
         </div>
         <p class="sm:col-span-2 lg:col-span-12 text-xs text-pm-cinza">
-            Local, rodovia, gravidade e filtros avançados valem nas três partes. O período escolhido na barra de cima vale só na comparação entre anos; a meta e o antes e depois usam o ano inteiro.
+            Indicador e meta valem para Meta e Antes e depois. Local, rodovia, gravidade e filtros avançados valem nas três subabas; o período da barra de cima vale só na Comparação entre anos (a meta e o antes e depois usam o ano inteiro).
         </p>
     </form>
 
-    <!-- 1. META -->
-    <h2 id="meta" class="titulo-bloco">Estamos cumprindo a meta?</h2>
-    <p class="-mt-3 text-sm text-pm-cinza">Meta: {{ nome_indicador|lower }} em {{ ano_atual }} pelo menos <b class="text-pm-preto">{{ meta }}%</b> abaixo de {{ ano_anterior }}, mês a mês e no acumulado do ano.</p>
+    {% include "dashboard/_subabas.html" %}
+
+    <!-- Subaba 1. META -->
+    <div id="meta" data-subaba class="space-y-4">
+    <p class="text-sm text-pm-cinza"><b class="text-pm-preto">Estamos cumprindo a meta?</b> Meta: {{ nome_indicador|lower }} em {{ ano_atual }} pelo menos <b class="text-pm-preto">{{ meta }}%</b> abaixo de {{ ano_anterior }}, mês a mês e no acumulado do ano.</p>
     {% if acompanhamento %}
         {% include "dashboard/_cartoes.html" with kpis=acompanhamento.cartoes %}
         {% if acompanhamento.frase_restante %}
@@ -88,11 +90,11 @@
     {% else %}
         <p class="cartao text-sm text-pm-cinza">Sem os dados de {{ ano_anterior }} para calcular a meta.</p>
     {% endif %}
+    </div>
 
-    <!-- 2. ANTES E DEPOIS -->
-    <h2 id="antes-depois" class="titulo-bloco">A ação funcionou?</h2>
-    <section class="cartao">
-        <h3 class="titulo-secao">Antes e depois de uma ação</h3>
+    <!-- Subaba 2. ANTES E DEPOIS -->
+    <section id="antes-depois" data-subaba class="cartao">
+        <h3 class="titulo-secao">A ação funcionou? Antes e depois</h3>
         <p class="subtitulo">
             Escolha acima o mês em que uma ação começou (operação, radar, obra, campanha) e, na barra de filtros, o local ou trecho onde ela aconteceu.
             O mês da ação fica de fora da conta, por ser de transição.
@@ -143,10 +145,10 @@
         <div class="mt-2">{{ grafico_antes_depois|safe }}</div>
     </section>
 
-    <!-- 3. COMPARAÇÃO ENTRE ANOS (antiga aba Comparação anual) -->
-    <h2 id="anos" class="titulo-bloco">Como este ano se compara aos anteriores?</h2>
+    <!-- Subaba 3. COMPARAÇÃO ENTRE ANOS (antiga aba Comparação anual) -->
+    <div id="anos" data-subaba class="space-y-4">
     <section class="cartao">
-        <h3 class="titulo-secao">Mesmo período, anos diferentes</h3>
+        <h3 class="titulo-secao">Como este ano se compara aos anteriores?</h3>
         <p class="subtitulo">
             Todos os anos usam os mesmos filtros e o mesmo intervalo de meses ({{ texto_periodo }} e os mesmos meses nos outros anos), para a comparação ser justa.
             A variação compara cada ano com o último ano anterior que tem o período completo no arquivo.
@@ -186,4 +188,5 @@
         {% include "dashboard/_painel.html" with p=p %}
         {% endfor %}
     </section>
+    </div>
 {% endblock %}

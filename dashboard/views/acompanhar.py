@@ -11,7 +11,8 @@ from ..dados import ANO_ATUAL, MESES, anos_disponiveis, carregar_ano, carregar_d
 from ..filtros import recortar
 from .comum import AJUDA, ANO_ANTERIOR, com_tendencia, mostrar, painel, preparar
 
-SECOES = [("meta", "Meta"), ("antes-depois", "Antes e depois"), ("anos", "Comparação entre anos")]
+SECOES = [("meta", "Meta de redução"), ("antes-depois", "Antes e depois de uma ação"),
+          ("anos", "Comparação entre anos")]
 
 
 # =============================================================================

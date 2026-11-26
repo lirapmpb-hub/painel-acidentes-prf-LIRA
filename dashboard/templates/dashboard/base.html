@@ -53,18 +53,21 @@
             .subtitulo { @apply text-sm text-pm-cinza; }
             .campo { @apply w-full rounded border border-pm-cinza-claro bg-white px-3 py-2 text-sm text-pm-preto focus:border-pm-vermelho focus:outline-none focus:ring-2 focus:ring-pm-vermelho/20 disabled:bg-pm-fundo disabled:text-pm-cinza-medio; }
             .rotulo { @apply block text-xs font-titulo font-semibold uppercase tracking-wide text-pm-cinza mb-1; }
-            /* Título de cada bloco grande da página (as seções do "Nesta página") */
-            .titulo-bloco { @apply font-titulo text-lg font-black uppercase tracking-wide text-pm-preto flex items-center gap-3; }
-            .titulo-bloco::after { content: ""; @apply h-px flex-1 bg-pm-cinza-claro; }
         }
         /* Faixa vermelha com o "degrau" diagonal da capa do MIV */
         .faixa-pmpb { height: 10px; background: #e30613;
             clip-path: polygon(0 40%, 42% 40%, 45% 0, 100% 0, 100% 100%, 0 100%); }
         .faixa-pmpb-invertida { height: 10px; background: #e30613;
             clip-path: polygon(0 0, 55% 0, 58% 60%, 100% 60%, 100% 100%, 0 100%); }
-        /* Os atalhos "Nesta página" param a seção logo abaixo da barra de filtros fixa */
+        /* Âncoras param logo abaixo da barra de filtros fixa */
         [id] { scroll-margin-top: 5.5rem; }
-        html { scroll-behavior: smooth; }
+        /* Subabas (_subabas.html): só a escolhida aparece */
+        [data-subaba][hidden] { display: none !important; }
+        .subaba { margin-bottom: -2px; border-bottom: 3px solid transparent; padding: 0.6rem 1rem;
+            font-family: Montserrat, Arial, sans-serif; font-size: 0.875rem; font-weight: 700;
+            color: #706f6f; white-space: nowrap; }
+        .subaba:hover { color: #e30613; }
+        .subaba[aria-selected="true"] { color: #1d1d1b; border-bottom-color: #e30613; }
         /* Partes recolhíveis (<details>): sem o triângulo padrão; textos de aberto/fechado */
         details > summary::-webkit-details-marker { display: none; }
         details[open] > summary .so-fechado, details:not([open]) > summary .so-aberto { display: none; }
@@ -127,7 +130,7 @@
                 <span class="font-titulo text-[11px] font-bold uppercase tracking-wide text-pm-cinza">Exibindo</span>
                 <span class="text-sm"><b>{{ local }}</b> <span class="text-pm-cinza">· {{ texto_periodo }} · {{ descricao_filtro }}</span></span>
                 {% for e in etiquetas %}
-                <a href="{{ e.link }}" class="inline-flex items-center gap-1.5 rounded-full bg-pm-vermelho px-2.5 py-0.5 text-xs font-bold text-white hover:bg-pm-vermelho-escuro" title="Tirar este filtro">
+                <a href="{{ e.link }}" data-manter-subaba class="inline-flex items-center gap-1.5 rounded-full bg-pm-vermelho px-2.5 py-0.5 text-xs font-bold text-white hover:bg-pm-vermelho-escuro" title="Tirar este filtro">
                     {{ e.texto }} <span aria-hidden="true">✕</span><span class="sr-only">tirar este filtro</span>
                 </a>
                 {% endfor %}
@@ -200,7 +203,7 @@
                 <div class="lg:col-span-2 flex gap-2">
                     <button type="submit" class="flex-1 rounded bg-pm-vermelho px-4 py-2 font-titulo text-sm font-bold uppercase tracking-wide text-white hover:bg-pm-vermelho-escuro">Filtrar</button>
                     {% if filtro_ativo %}
-                    <a href="{{ link_limpar }}" class="rounded border border-pm-preto px-3 py-2 font-titulo text-sm font-bold text-pm-preto hover:bg-pm-preto hover:text-white">Limpar</a>
+                    <a href="{{ link_limpar }}" data-manter-subaba class="rounded border border-pm-preto px-3 py-2 font-titulo text-sm font-bold text-pm-preto hover:bg-pm-preto hover:text-white">Limpar</a>
                     {% endif %}
                 </div>
 
@@ -229,16 +232,6 @@
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
-        {% if secoes %}
-        <!-- Atalhos para as seções desta página -->
-        <nav class="-mb-2 flex flex-wrap items-center gap-x-1 gap-y-2 text-sm print:hidden" aria-label="Nesta página">
-            <span class="mr-1 font-titulo text-[11px] font-bold uppercase tracking-wide text-pm-cinza">Nesta página</span>
-            {% for ancora, titulo in secoes %}
-            <a href="#{{ ancora }}" class="rounded-full border border-pm-cinza-claro bg-white px-3 py-1 text-xs font-bold text-pm-preto hover:border-pm-vermelho hover:text-pm-vermelho">{{ titulo }}</a>
-            {% endfor %}
-        </nav>
-        {% endif %}
-
         {% block conteudo %}{% endblock %}
 
         <!-- Glossário: como ler os indicadores -->
@@ -263,8 +256,49 @@
         const CHAVE_FILTROS = "painel-filtros-abertos";
         function recarregarFiltros(formulario) {
             try { sessionStorage.setItem(CHAVE_FILTROS, "1"); } catch (erro) {}
+            manterSubaba(formulario);
             formulario.submit();
         }
+
+        // SUBABAS: cada aba longa é dividida em partes (elementos com data-subaba);
+        // só a escolhida aparece. A escolhida vai no fim do endereço (#mapa), então
+        // o link copiado, o voltar do navegador e os filtros mantêm a mesma subaba.
+        const paineisSubaba = [...document.querySelectorAll("[data-subaba]")];
+        const linksSubaba = [...document.querySelectorAll("[data-subaba-link]")];
+        function subabaAtual() {
+            return paineisSubaba.find((p) => !p.hidden);
+        }
+        function mostrarSubaba(id, rolar) {
+            if (!paineisSubaba.length) return;
+            const alvo = id ? document.getElementById(id) : null;
+            const painel = (alvo && alvo.closest("[data-subaba]")) || paineisSubaba[0];
+            paineisSubaba.forEach((p) => { p.hidden = p !== painel; });
+            linksSubaba.forEach((l) => l.setAttribute("aria-selected", l.dataset.subabaLink === painel.id));
+            // gráficos desenhados enquanto escondidos: ajusta a largura ao aparecer
+            painel.querySelectorAll(".js-plotly-plot").forEach((g) => Plotly.Plots.resize(g));
+            if (rolar && alvo && alvo !== painel) alvo.scrollIntoView();
+        }
+        function manterSubaba(formulario) {
+            const atual = subabaAtual();
+            if (atual) formulario.action = location.pathname + "#" + atual.id;
+        }
+        linksSubaba.forEach((link) => link.addEventListener("click", (evento) => {
+            evento.preventDefault();
+            history.replaceState(null, "", "#" + link.dataset.subabaLink);
+            mostrarSubaba(link.dataset.subabaLink, false);
+        }));
+        window.addEventListener("hashchange", () => mostrarSubaba(location.hash.slice(1), true));
+        document.addEventListener("submit", (evento) => manterSubaba(evento.target));
+        // Etiquetas de filtro e "Limpar" também mantêm a subaba
+        document.addEventListener("click", (evento) => {
+            const link = evento.target.closest("a[data-manter-subaba]");
+            const atual = subabaAtual();
+            if (link && atual) link.href = link.href.split("#")[0] + "#" + atual.id;
+        });
+        mostrarSubaba(location.hash.slice(1), true);
+        // Na impressão saem todas as subabas
+        window.addEventListener("beforeprint", () => paineisSubaba.forEach((p) => { p.dataset.estava = p.hidden; p.hidden = false; }));
+        window.addEventListener("afterprint", () => paineisSubaba.forEach((p) => { p.hidden = p.dataset.estava === "true"; }));
         try {
             if (sessionStorage.getItem(CHAVE_FILTROS) === "1") {
                 document.getElementById("barra-filtros").open = true;

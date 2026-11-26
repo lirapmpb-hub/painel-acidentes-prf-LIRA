@@ -14,7 +14,7 @@ from .comum import analise_do_filtro, cartoes_principais, mostrar, preparar
 LIMITE_PONTOS_MAPA = 8000
 
 SECOES = [("evolucao", "Evolução"), ("mapa", "Mapa"), ("quando", "Dia e hora"),
-          ("tipos", "Tipos"), ("rodovias", "Rodovias")]
+          ("tipos", "Tipos de acidente"), ("rodovias", "Rodovias")]
 
 
 def pontos_do_mapa(recorte):

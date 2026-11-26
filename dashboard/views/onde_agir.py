@@ -9,8 +9,8 @@ from ..dados import DIAS_SEMANA
 from .comum import (AJUDA, analise_do_filtro, escolher_ordem, link_ficha, montar_tabela, mostrar,
                     painel, preparar)
 
-SECOES = [("prioridades", "Prioridades"), ("mapa", "Mapa"), ("quando", "Quando"),
-          ("quem-age", "Quem age"), ("perfil", "Perfil da BR"), ("ranking", "Ranking completo")]
+SECOES = [("prioridades", "Prioridades"), ("mapa", "Mapa"), ("quando", "Quando agir"),
+          ("quem-age", "Quem age"), ("trechos", "Perfil e ranking dos trechos")]
 
 
 def linhas_de_prioridade(f, recorte, ranking, n=20):

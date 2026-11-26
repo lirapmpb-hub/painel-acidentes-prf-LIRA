@@ -41,6 +41,15 @@ class PaginasTest(SimpleTestCase):
                 self.assertNotIn("Erro ao montar este gráfico", html)
                 self.assertIn("Polícia Militar da Paraíba", html)
 
+    def test_cada_subaba_tem_sua_parte(self):
+        for url in ["/?uf=PB", "/onde-agir/?uf=PB&br=230", "/por-que/?uf=PB", "/acompanhar/?uf=PB"]:
+            with self.subTest(url=url):
+                html = self.client.get(url).content.decode()
+                links = re.findall(r'data-subaba-link="([^"]+)"', html)
+                partes = re.findall(r'id="([^"]+)" data-subaba', html)
+                self.assertGreaterEqual(len(links), 3)
+                self.assertEqual(links, partes)
+
     def test_abas_antigas_redirecionam_mantendo_filtros(self):
         for antiga, nova in [("/trechos/", "/onde-agir/"), ("/condicoes/", "/por-que/"),
                              ("/vitimas/", "/por-que/"), ("/anos/", "/acompanhar/"), ("/metas/", "/acompanhar/")]:

@@ -4,8 +4,10 @@
 {% block conteudo %}
     {% include "dashboard/_resumo.html" with frases=resumo %}
 
-    <!-- 1. ONDE: ranking por gravidade -->
-    <section id="prioridades" class="cartao">
+    {% include "dashboard/_subabas.html" %}
+
+    <!-- Subaba 1. ONDE: ranking por gravidade -->
+    <section id="prioridades" data-subaba class="cartao">
         <h2 class="titulo-secao">Onde agir primeiro?</h2>
         <p class="subtitulo">
             Os 20 trechos de 10 km com maior <b>gravidade total (UPS)</b>
@@ -56,14 +58,14 @@
     </section>
 
     <!-- 2. ONDE (mapa): mancha de gravidade -->
-    <section id="mapa" class="cartao">
+    <section id="mapa" data-subaba class="cartao">
         <h2 class="titulo-secao">Onde a gravidade se concentra?</h2>
         <p class="subtitulo">Mapa de calor ponderado pela gravidade (UPS): quanto mais escura a mancha, mais mortes e feridos graves · escolha um estado para ver em detalhe</p>
         <div class="mt-3">{{ grafico_densidade|safe }}</div>
     </section>
 
     <!-- 3. QUANDO: janelas de risco -->
-    <section id="quando" class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+    <section id="quando" data-subaba class="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div class="cartao lg:col-span-3">
             <h2 class="titulo-secao">Quando a gravidade é maior?</h2>
             <p class="subtitulo">Dia da semana e hora, pesando cada acidente pela gravidade (UPS)</p>
@@ -89,7 +91,7 @@
     </section>
 
     <!-- 4. O QUE FAZER: causas por responsável -->
-    <section id="quem-age" class="cartao">
+    <section id="quem-age" data-subaba class="cartao">
         <h2 class="titulo-secao">O que fazer e quem age?</h2>
         <p class="subtitulo">As causas registradas pela PRF agrupadas por quem pode agir · barras = parte da gravidade total</p>
         <div class="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
@@ -111,7 +113,8 @@
         </div>
     </section>
 
-    <!-- 5. Perfil da BR (só com estado e rodovia escolhidos) -->
+    <!-- Subaba 5. Perfil da BR e ranking completo dos trechos -->
+    <div id="trechos" data-subaba class="space-y-6">
     <div id="perfil">
     {% if perfil %}
         {% include "dashboard/_painel.html" with p=perfil %}
@@ -135,4 +138,5 @@
             <p class="py-10 text-center text-sm text-pm-cinza">Sem trechos identificados para este filtro.</p>
         {% endif %}
     </section>
+    </div>
 {% endblock %}
