@@ -61,12 +61,16 @@ dashboard/
   filtros.py     filtros da URL
   calculos.py    índices e agregações
   decisao.py     UPS, prioridades, janelas de risco, causas por responsável, metas e textos
+  mapa.py        mapa por camadas (áreas, rodovias por trecho, prioritários, mortes, calor)
+  geo.py         malhas do IBGE e ligação município PRF -> código IBGE
   graficos.py    gráficos (Plotly) e paleta de cores
   views/         um arquivo por aba (panorama, onde_agir, por_que, acompanhar, estrutura, ficha)
   tests.py       testes automáticos (python manage.py test)
   templates/     páginas HTML (Tailwind CSS)
   static/        brasão da PMPB
 data/            datatran2023.csv a datatran2026.csv
+data/geo/        malhas do IBGE (municípios, regiões imediatas e intermediárias); refazer com
+                 python manage.py baixar_malhas
 ```
 
 ## Identidade visual

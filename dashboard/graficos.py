@@ -492,6 +492,116 @@ def grafico_densidade(grade, raio):
     return fig
 
 
+ESCALA_AREAS = [[0, "#fdf0f0"], [0.2, "#f6a5a9"], [0.55, "#e30613"], [1, "#7a030a"]]
+ESCALA_VARIACAO = [[0, "#00632a"], [0.3, "#6fbf8c"], [0.5, "#f5f5f5"], [0.7, "#f6a5a9"], [1, "#b3050f"]]
+
+
+def teto_da_escala(valores):
+    """Topo da escala de cor: o 95º percentil, para uma área muito acima das outras
+    (ex.: a capital) não deixar todas as demais com a mesma cor clara."""
+    v = [x for x in valores if pd.notna(x) and x > 0]
+    if not v:
+        return 1
+    return float(pd.Series(v).quantile(0.95)) if len(v) >= 5 else float(max(v))
+
+
+def zoom_dos_limites(lat_min, lat_max, lon_min, lon_max):
+    extensao = max(lat_max - lat_min, (lon_max - lon_min) * 0.8, 0.05)
+    return min(max(log2(360 / extensao) - 1.15, 2.8), 11)
+
+
+@protegido
+def grafico_mapa_camadas(niveis, nivel_inicial, metricas, linhas, trechos, prioritarios, fatais, grade, raio, vista):
+    """
+    MAPA POR CAMADAS. niveis = {nível: (geojson, tabela, textos)}; cada nível vira
+    uma camada de áreas coloridas (só a escolhida aparece). As outras camadas:
+    rodovias por trecho, trechos prioritários, acidentes com morte e mancha de calor.
+    layout.meta["mapa"] guarda o que os controles acima do mapa precisam (ver base.html).
+    """
+    fig = go.Figure()
+    meta = {"niveis": {}, "metricas": {}, "nivel": nivel_inicial, "metrica": "ups",
+            "camadas": {"rodovias": [], "prioritarios": [], "fatais": [], "calor": []}}
+    for chave, (titulo, tipo, _) in metricas.items():
+        divergente = tipo == "divergente"
+        meta["metricas"][chave] = {"titulo": titulo, "escala": ESCALA_VARIACAO if divergente else ESCALA_AREAS,
+                                   "zmin": -100 if divergente else 0}
+
+    dica_area = ("<b>%{customdata[0]}</b><br>%{customdata[1]} acidentes · %{customdata[2]} mortos"
+                 "<br>Gravidade: %{customdata[3]} UPS · letalidade %{customdata[4]}"
+                 "<br>Variação sobre o ano anterior: %{customdata[5]}"
+                 "<br>Causa mais grave: %{customdata[6]}<extra></extra>")
+    for nivel, (geojson, tabela, textos) in niveis.items():
+        zs = {k: [None if pd.isna(v) else round(float(v), 2) for v in tabela[k]] for k in metricas}
+        tetos = {k: (100 if metricas[k][1] == "divergente" else teto_da_escala(tabela[k])) for k in metricas}
+        meta["niveis"][nivel] = {"trace": len(fig.data), "z": zs, "zmax": tetos}
+        fig.add_trace(go.Choroplethmap(
+            geojson=geojson, featureidkey="properties.codarea", locations=list(tabela["codarea"]),
+            z=zs["ups"], zmin=0, zmax=tetos["ups"], colorscale=ESCALA_AREAS,
+            marker={"opacity": 0.62, "line": {"width": 0.7, "color": "white"}},
+            customdata=textos, hovertemplate=dica_area, name=nivel, showlegend=False,
+            visible=nivel == nivel_inicial,
+            colorbar={"title": {"text": "Gravidade (UPS)", "side": "right"}, "thickness": 12, "len": 0.55,
+                      "x": 0.995, "xanchor": "right", "y": 0.5, "bgcolor": "rgba(255,255,255,0.85)"},
+        ))
+
+    # Rodovias coloridas por trecho (uma linha por classe de gravidade) + pontos de hover/clique
+    for camada in linhas:
+        meta["camadas"]["rodovias"].append(len(fig.data))
+        fig.add_trace(go.Scattermap(lat=camada["lat"], lon=camada["lon"], mode="lines", name=camada["nome"],
+                                    line={"width": 4.5, "color": camada["cor"]}, hoverinfo="skip"))
+    if not trechos.empty:
+        meta["camadas"]["rodovias"].append(len(fig.data))
+        fig.add_trace(go.Scattermap(
+            lat=trechos["latitude"], lon=trechos["longitude"], mode="markers", showlegend=False,
+            marker={"size": 9, "color": trechos["cor"], "opacity": 0.95}, customdata=trechos["dados"].tolist(),
+            hovertemplate=("<b>%{customdata[0]}</b> · %{customdata[1]}<br>%{customdata[2]} acidentes · "
+                           "%{customdata[3]} mortos · %{customdata[4]} UPS<br>Clique para abrir a ficha<extra></extra>"),
+        ))
+
+    # Acidentes com morte (desligado no início)
+    if not fatais.empty:
+        meta["camadas"]["fatais"].append(len(fig.data))
+        fig.add_trace(go.Scattermap(
+            lat=fatais["latitude"], lon=fatais["longitude"], mode="markers", name="Acidente com morte",
+            marker={"size": 7, "color": PRETO, "opacity": 0.85}, visible=False,
+            customdata=fatais[["local", "rodovia", "mortos"]].values.tolist(),
+            hovertemplate="%{customdata[0]}<br>%{customdata[1]}<br>%{customdata[2]} mortos<extra></extra>",
+        ))
+
+    # Mancha de calor da gravidade (desligada no início)
+    if not grade.empty:
+        meta["camadas"]["calor"].append(len(fig.data))
+        fig.add_trace(go.Densitymap(
+            lat=grade["latitude"], lon=grade["longitude"], z=grade["ups"], radius=raio,
+            colorscale=ESCALA_DENSIDADE, showscale=False, visible=False, name="Mancha de calor", hoverinfo="skip",
+        ))
+
+    # Trechos prioritários numerados como no ranking (por cima de tudo)
+    if not prioritarios.empty:
+        meta["camadas"]["prioritarios"].append(len(fig.data))
+        fig.add_trace(go.Scattermap(
+            lat=prioritarios["latitude"], lon=prioritarios["longitude"], mode="markers+text",
+            name="Trecho prioritário (nº do ranking)", text=[str(p) for p in prioritarios["posicao"]],
+            textposition="middle center", textfont={"color": "white", "size": 11},
+            marker={"size": 22, "color": PRETO, "opacity": 0.95}, customdata=prioritarios["dados"].tolist(),
+            hovertemplate=("<b>%{customdata[0]}º · %{customdata[1]}</b><br>%{customdata[2]}<br>"
+                           "%{customdata[3]} UPS · %{customdata[4]} mortos<br>Clique para abrir a ficha<extra></extra>"),
+        ))
+
+    lat_min, lat_max, lon_min, lon_max = vista
+    fig.update_layout(
+        map={"style": "carto-positron", "zoom": zoom_dos_limites(*vista),
+             "center": {"lat": (lat_min + lat_max) / 2, "lon": (lon_min + lon_max) / 2}},
+        meta={"mapa": meta},
+    )
+    estilo_padrao(fig, altura=620, legenda=True)
+    fig.update_layout(margin={"l": 0, "r": 0, "t": 0, "b": 0},
+                      legend={"orientation": "v", "x": 0.01, "y": 0.99, "xanchor": "left", "yanchor": "top",
+                              "bgcolor": "rgba(255,255,255,0.88)", "bordercolor": CINZA_CLARO, "borderwidth": 1,
+                              "font": {"size": 11}})
+    return fig
+
+
 @protegido
 def grafico_grupos(grupos):
     """BARRAS - parte da gravidade de cada grupo de causas (quem pode agir)."""

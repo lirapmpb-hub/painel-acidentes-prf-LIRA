@@ -109,6 +109,34 @@ class FiltrosTest(SimpleTestCase):
         self.assertNotIn("JOAO PESSOA", municipios)
 
 
+class MapaTest(SimpleTestCase):
+    """Mapa por áreas: municípios da PRF ligados ao IBGE e totais que batem."""
+
+    def test_todos_os_municipios_da_pb_tem_codigo_ibge(self):
+        from . import geo
+        from .dados import carregar_dados
+        pb = carregar_dados().query("uf == 'PB'")
+        sem_codigo = {m for m in pb["municipio"].unique() if geo.codigo_do_municipio("PB", m) is None}
+        self.assertEqual(sem_codigo, set())
+
+    def test_areas_somam_o_total(self):
+        from . import mapa
+        from .dados import carregar_dados
+        f = {"uf": "PB"}
+        recorte = carregar_dados().query("uf == 'PB'")
+        total = decisao.ups(recorte).sum()
+        for nivel in ("municipio", "imediata", "intermediaria"):
+            with self.subTest(nivel=nivel):
+                tabela = mapa.agregar_areas(f, recorte, None, nivel)
+                self.assertEqual(tabela["ups"].sum(), total)
+
+    def test_pagina_tem_o_mapa_por_camadas(self):
+        html = self.client.get("/onde-agir/?uf=PB").content.decode()
+        self.assertIn("mapa-camadas", html)
+        self.assertIn('data-mapa-nivel="imediata"', html)
+        self.assertIn('data-tabela-nivel="intermediaria"', html)
+
+
 class DecisaoTest(SimpleTestCase):
     """Cálculos de apoio à decisão."""
 

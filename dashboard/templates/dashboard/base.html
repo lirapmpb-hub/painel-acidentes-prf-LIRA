@@ -340,9 +340,11 @@
         // Botões "Ordenar por": trocam a ordem das barras sem recarregar a página.
         // As listas de cada ordem vêm do servidor, em layout.meta (ver graficos.aplicar_ordens).
         document.addEventListener("click", (evento) => {
-            const botao = evento.target.closest(".botao-ordem");
+            // só os botões de ordenação (os do mapa usam o mesmo visual, mas têm outro script)
+            const botao = evento.target.closest(".botao-ordem[data-ordem]");
             if (!botao) return;
             const caixa = botao.closest(".ordenavel");
+            if (!caixa) return;
             const grafico = caixa.querySelector(".js-plotly-plot");
             const meta = grafico.layout.meta;
             const ordem = meta.ordens[botao.dataset.ordem];
@@ -357,6 +359,58 @@
             }
             Plotly.react(grafico, grafico.data, layout);
             caixa.querySelectorAll(".botao-ordem").forEach((b) => b.setAttribute("aria-pressed", b === botao));
+        });
+
+        // MAPA POR CAMADAS (aba Onde agir): "Dividir por", "Colorir por" e "Camadas" trocam
+        // o que aparece sem recarregar. Os dados de cada opção vêm em layout.meta.mapa
+        // (ver graficos.grafico_mapa_camadas).
+        function atualizarMapa(caixa) {
+            const grafico = caixa.querySelector(".js-plotly-plot");
+            if (!grafico || !grafico.layout.meta || !grafico.layout.meta.mapa) return;
+            const meta = grafico.layout.meta.mapa;
+            const botaoNivel = caixa.querySelector("[data-mapa-nivel][aria-pressed='true']");
+            const nivel = botaoNivel ? botaoNivel.dataset.mapaNivel : meta.nivel;
+            const metrica = caixa.querySelector("[data-mapa-metrica][aria-pressed='true']").dataset.mapaMetrica;
+            const ligadas = new Set([...caixa.querySelectorAll("[data-mapa-camada]:checked")].map((c) => c.value));
+
+            const visivel = grafico.data.map(() => false);
+            for (const [camada, indices] of Object.entries(meta.camadas)) {
+                if (ligadas.has(camada)) indices.forEach((i) => { visivel[i] = true; });
+            }
+            for (const [n, info] of Object.entries(meta.niveis)) visivel[info.trace] = ligadas.has("areas") && n === nivel;
+            Plotly.restyle(grafico, { visible: visivel });
+
+            const info = meta.niveis[nivel];
+            const m = meta.metricas[metrica];
+            Plotly.restyle(grafico, {
+                z: [info.z[metrica]], zmin: [m.zmin], zmax: [info.zmax[metrica]], colorscale: [m.escala],
+                "colorbar.title.text": [m.titulo],
+            }, [info.trace]);
+
+            // a tabela abaixo do mapa acompanha a divisão escolhida
+            const subaba = caixa.closest("[data-subaba]") || document;
+            subaba.querySelectorAll("[data-tabela-nivel]").forEach((t) => { t.hidden = t.dataset.tabelaNivel !== nivel; });
+        }
+        document.querySelectorAll(".mapa-camadas").forEach((caixa) => {
+            caixa.addEventListener("click", (evento) => {
+                const botao = evento.target.closest("[data-mapa-nivel], [data-mapa-metrica]");
+                if (!botao) return;
+                const grupo = botao.dataset.mapaNivel ? "[data-mapa-nivel]" : "[data-mapa-metrica]";
+                caixa.querySelectorAll(grupo).forEach((b) => b.setAttribute("aria-pressed", b === botao));
+                atualizarMapa(caixa);
+            });
+            caixa.addEventListener("change", (evento) => {
+                if (evento.target.matches("[data-mapa-camada]")) atualizarMapa(caixa);
+            });
+            // clique numa área ou num trecho: abre o link guardado no último campo do customdata
+            const grafico = caixa.querySelector(".js-plotly-plot");
+            if (grafico && grafico.on) {
+                grafico.on("plotly_click", (dados) => {
+                    const extra = dados.points[0] && dados.points[0].customdata;
+                    const url = Array.isArray(extra) ? extra[extra.length - 1] : null;
+                    if (typeof url === "string" && url.startsWith("/")) window.location.href = url;
+                });
+            }
         });
 
         // Gráficos dentro de partes recolhíveis: ao abrir, ajustam a largura

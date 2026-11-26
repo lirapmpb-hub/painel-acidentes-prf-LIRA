@@ -58,11 +58,94 @@
     </section>
 
     <!-- 2. ONDE (mapa): mancha de gravidade -->
-    <section id="mapa" data-subaba class="cartao">
+    <div id="mapa" data-subaba class="space-y-4">
+    <section class="cartao mapa-camadas">
         <h2 class="titulo-secao">Onde a gravidade se concentra?</h2>
-        <p class="subtitulo">Mapa de calor ponderado pela gravidade (UPS): quanto mais escura a mancha, mais mortes e feridos graves · escolha um estado para ver em detalhe</p>
-        <div class="mt-3">{{ grafico_densidade|safe }}</div>
+        {% if tabelas_areas %}
+        <p class="subtitulo">
+            Áreas coloridas pelo indicador escolhido e rodovias coloridas trecho a trecho · os números pretos são os trechos do ranking ·
+            clique num trecho para abrir a ficha{% if uf %} ou num município para filtrar o painel por ele{% else %} ou num estado para vê-lo em detalhe{% endif %}
+        </p>
+
+        <!-- Controles do mapa (o script do base.html troca as camadas sem recarregar) -->
+        <div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs print:hidden">
+            {% if niveis_mapa|length > 1 %}
+            <div class="flex flex-wrap items-center gap-1">
+                <span class="mr-1 font-titulo font-bold uppercase tracking-wide text-pm-cinza">Dividir por</span>
+                {% for chave, nome in niveis_mapa %}
+                <button type="button" class="botao-ordem" data-mapa-nivel="{{ chave }}" aria-pressed="{% if forloop.first %}true{% else %}false{% endif %}">{{ nome }}</button>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <div class="flex flex-wrap items-center gap-1">
+                <span class="mr-1 font-titulo font-bold uppercase tracking-wide text-pm-cinza">Colorir por</span>
+                {% for chave, nome in metricas_mapa %}
+                <button type="button" class="botao-ordem" data-mapa-metrica="{{ chave }}" aria-pressed="{% if forloop.first %}true{% else %}false{% endif %}"
+                        {% if chave == "indice" %}title="Áreas com menos de 30 acidentes ficam sem cor (poucos casos)"{% elif chave == "variacao" %}title="Verde = melhorou, vermelho = piorou, em relação aos mesmos meses de {{ ano_anterior }}"{% endif %}>{{ nome }}{% if chave == "variacao" %} vs {{ ano_anterior }}{% endif %}</button>
+                {% endfor %}
+            </div>
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span class="font-titulo font-bold uppercase tracking-wide text-pm-cinza">Camadas</span>
+                <label class="inline-flex items-center gap-1"><input type="checkbox" class="accent-pm-vermelho" data-mapa-camada value="areas" checked> Áreas</label>
+                <label class="inline-flex items-center gap-1"><input type="checkbox" class="accent-pm-vermelho" data-mapa-camada value="rodovias" checked> Rodovias por trecho</label>
+                <label class="inline-flex items-center gap-1"><input type="checkbox" class="accent-pm-vermelho" data-mapa-camada value="prioritarios" checked> Trechos prioritários</label>
+                <label class="inline-flex items-center gap-1"><input type="checkbox" class="accent-pm-vermelho" data-mapa-camada value="fatais"> Acidentes com morte</label>
+                <label class="inline-flex items-center gap-1"><input type="checkbox" class="accent-pm-vermelho" data-mapa-camada value="calor"> Mancha de calor</label>
+            </div>
+        </div>
+        {% else %}
+        <p class="subtitulo">Mapa de calor ponderado pela gravidade (UPS): quanto mais escura a mancha, mais mortes e feridos graves</p>
+        {% endif %}
+        <div class="mt-3">{{ grafico_mapa|safe }}</div>
+        {% if tabelas_areas %}
+        <p class="mt-2 text-xs text-pm-cinza">
+            Cor das áreas: a escala vai até o valor das áreas mais altas (as 5% de cima ficam com a cor mais escura), para uma área muito acima das demais não apagar as outras.
+            Sem cor = poucos casos para calcular. Contornos: IBGE.
+        </p>
+        {% endif %}
     </section>
+
+    {% for t in tabelas_areas %}
+    <section class="cartao" data-tabela-nivel="{{ t.nivel }}" {% if not forloop.first %}hidden{% endif %}>
+        <h2 class="titulo-secao">Por {{ t.titulo|lower }}</h2>
+        <p class="subtitulo">{{ t.nota }}, da mais grave para a menos grave · tendência contra os mesmos meses de {{ t.ano_anterior }}</p>
+        <div class="mt-3 overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr class="border-b-2 border-pm-preto font-titulo text-xs uppercase tracking-wide text-pm-cinza">
+                        <th class="py-2 pr-3 text-right font-bold">#</th>
+                        <th class="py-2 pr-4 text-left font-bold">{{ t.titulo }}</th>
+                        <th class="py-2 pr-4 text-right font-bold">Gravidade (UPS)</th>
+                        <th class="py-2 pr-4 text-right font-bold">% do total</th>
+                        <th class="py-2 pr-4 text-right font-bold">Tendência</th>
+                        <th class="py-2 pr-4 text-right font-bold">Acidentes</th>
+                        <th class="py-2 pr-4 text-right font-bold">Mortos</th>
+                        <th class="py-2 pr-4 text-right font-bold">Mortos/100 acid.</th>
+                        <th class="py-2 pr-4 text-left font-bold">Causa mais grave</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in t.linhas %}
+                    <tr class="border-b border-pm-cinza-claro/50 odd:bg-pm-fundo/50">
+                        <td class="py-2 pr-3 text-right tabular-nums text-pm-cinza">{{ l.posicao }}</td>
+                        <td class="py-2 pr-4 font-bold">{{ l.nome }}</td>
+                        <td class="py-2 pr-4 text-right tabular-nums font-bold">{{ l.ups }}</td>
+                        <td class="py-2 pr-4 text-right tabular-nums">{{ l.parte }}</td>
+                        <td class="py-2 pr-4 text-right tabular-nums whitespace-nowrap font-bold {{ l.tend.classe }}">{% if l.tend %}{{ l.tend.seta }} {{ l.tend.texto }}{% else %}–{% endif %}</td>
+                        <td class="py-2 pr-4 text-right tabular-nums">{{ l.acidentes }}</td>
+                        <td class="py-2 pr-4 text-right tabular-nums">{{ l.mortos }}</td>
+                        <td class="py-2 pr-4 text-right tabular-nums">{{ l.indice }}</td>
+                        <td class="py-2 pr-4 min-w-[14rem]">{{ l.causa }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="9" class="py-8 text-center text-pm-cinza">Sem acidentes para este filtro.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% endfor %}
+    </div>
 
     <!-- 3. QUANDO: janelas de risco -->
     <section id="quando" data-subaba class="grid grid-cols-1 lg:grid-cols-5 gap-4">

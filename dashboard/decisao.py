@@ -277,8 +277,9 @@ def grade_densidade(recorte, passo):
         return pd.DataFrame(columns=["latitude", "longitude", "ups", "acidentes", "mortos"])
     d = com_ups(d[["id", "latitude", "longitude", "mortos", "feridos_graves",
                    "classificacao_acidente", "tipo_acidente"]])
-    d["latitude"] = (d["latitude"] / passo).round() * passo
-    d["longitude"] = (d["longitude"] / passo).round() * passo
+    # arredonda de novo no fim: 0.1 * 73 = 7.300000000000001 ocuparia espaço à toa na página
+    d["latitude"] = ((d["latitude"] / passo).round() * passo).round(4)
+    d["longitude"] = ((d["longitude"] / passo).round() * passo).round(4)
     return d.groupby(["latitude", "longitude"]).agg(**MEDIDAS).reset_index()
 
 
