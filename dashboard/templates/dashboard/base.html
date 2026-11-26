@@ -86,22 +86,22 @@
         }
     </style>
 
-    <!-- Plotly: biblioteca dos gráficos, carregada uma vez para a página toda -->
-    <script src="{{ plotly_js }}" charset="utf-8"></script>
+    <!-- Plotly: biblioteca dos gráficos, carregada uma vez para a página toda (a página inicial não usa) -->
+    {% if plotly_js %}<script src="{{ plotly_js }}" charset="utf-8"></script>{% endif %}
 </head>
 <body class="bg-pm-fundo text-pm-preto font-sans antialiased">
 
     <!-- Cabeçalho no padrão do MIV: faixa preta, brasão, dístico, abas e faixa vermelha -->
     <header class="bg-pm-preto text-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-4">
-            <div class="flex items-center gap-4">
+            <a href="{% url 'inicio' %}" class="flex w-fit items-center gap-4" title="Voltar ao início">
                 <img src="{% static 'dashboard/brasao-pmpb.png' %}" alt="Brasão da Polícia Militar da Paraíba" class="h-14 sm:h-16 w-auto shrink-0">
                 <div class="min-w-0">
                     <p class="font-titulo text-xs font-extrabold uppercase leading-tight tracking-wide">Polícia Militar da Paraíba</p>
                     <h1 class="mt-0.5 font-titulo text-xl sm:text-2xl font-black leading-tight">Painel de Acidentes nas Rodovias Federais</h1>
                     <p class="mt-0.5 text-xs text-pm-cinza-claro">Dados abertos da Polícia Rodoviária Federal · {{ ano_atual }}</p>
                 </div>
-            </div>
+            </a>
             <!-- Só na impressão: o que está sendo mostrado (na tela, isso fica na barra de filtros) -->
             <p class="hidden print:block mt-3 text-sm">Exibindo: <b>{{ local }}</b> · {{ texto_periodo }} · {{ descricao_filtro }}</p>
 
@@ -116,14 +116,15 @@
                     </a>
                     {% endfor %}
                 </div>
-                <a href="{{ link_exportar }}" class="mb-2 hidden sm:inline-block whitespace-nowrap rounded border border-pm-cinza px-3 py-1.5 text-xs font-bold text-white hover:border-pm-vermelho hover:bg-pm-vermelho" title="Baixa os acidentes do filtro atual, com as 30 colunas da PRF">Baixar CSV</a>
+                {% if link_exportar %}<a href="{{ link_exportar }}" class="mb-2 hidden sm:inline-block whitespace-nowrap rounded border border-pm-cinza px-3 py-1.5 text-xs font-bold text-white hover:border-pm-vermelho hover:bg-pm-vermelho" title="Baixa os acidentes do filtro atual, com as 30 colunas da PRF">Baixar CSV</a>{% endif %}
             </nav>
         </div>
     </header>
     <div class="faixa-pmpb print:hidden" aria-hidden="true"></div>
 
     <!-- BARRA DE FILTROS: fica fixa no topo ao rolar. Recolhida, mostra só o que
-         está filtrado; "Editar filtros" abre o formulário. -->
+         está filtrado; "Editar filtros" abre o formulário. (A página inicial não tem.) -->
+    {% block barra_filtros %}
     <div class="sticky top-0 z-40 border-b border-pm-cinza-claro/70 bg-white/95 shadow-sm backdrop-blur print:hidden">
         <details id="barra-filtros" class="max-w-7xl mx-auto px-4 sm:px-6">
             <summary class="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-2 py-2.5 select-none">
@@ -229,6 +230,7 @@
             </form>
         </details>
     </div>
+    {% endblock %}
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
@@ -374,7 +376,7 @@
                 <div class="text-xs leading-relaxed">
                     <p class="font-titulo text-sm font-black uppercase text-white">Polícia Militar da Paraíba</p>
                     <p>Fonte: Polícia Rodoviária Federal, arquivos datatran (acidentes nas rodovias federais).
-                        <a href="{{ link_exportar }}" class="font-bold text-white underline decoration-pm-vermelho decoration-2 underline-offset-4 hover:text-pm-vermelho">Baixar os acidentes deste filtro em CSV</a>.</p>
+                        {% if link_exportar %}<a href="{{ link_exportar }}" class="font-bold text-white underline decoration-pm-vermelho decoration-2 underline-offset-4 hover:text-pm-vermelho">Baixar os acidentes deste filtro em CSV</a>.{% endif %}</p>
                 </div>
             </div>
         </div>

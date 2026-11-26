@@ -6,6 +6,7 @@ das colunas e cria colunas auxiliares (mês, hora, área, trecho) usadas pelos
 gráficos. O ano principal do painel é ANO_ATUAL; os outros servem para a aba
 de comparação anual.
 """
+import json
 import threading
 from functools import lru_cache
 
@@ -158,3 +159,32 @@ def carregar_dados():
     if not arquivo_do_ano(ANO_ATUAL).exists():
         raise FileNotFoundError(f"Arquivo não encontrado: {arquivo_do_ano(ANO_ATUAL)}")
     return _ler_ano(ANO_ATUAL)
+
+
+# --- Resumo da base (para a página inicial, que não carrega os acidentes) ---
+ARQUIVO_RESUMO = PASTA_CACHE / "resumo.json"
+
+
+def calcular_resumo_da_base():
+    """Anos disponíveis e último mês publicado do ano atual (lê os dados)."""
+    return {"anos": anos_disponiveis(), "ano_atual": ANO_ATUAL,
+            "ultimo_mes": int(carregar_dados()["mes"].max())}
+
+
+def gerar_resumo_da_base():
+    """Grava o resumo em data/cache/resumo.json (usado no deploy)."""
+    PASTA_CACHE.mkdir(exist_ok=True)
+    ARQUIVO_RESUMO.write_text(json.dumps(calcular_resumo_da_base()), encoding="utf-8")
+
+
+def resumo_da_base():
+    """
+    O resumo gravado no deploy, se estiver em dia com o CSV do ano atual.
+    Sem ele (ex.: no computador, antes de rodar preparar_dados), calcula na hora.
+    """
+    try:
+        if ARQUIVO_RESUMO.stat().st_mtime >= arquivo_do_ano(ANO_ATUAL).stat().st_mtime:
+            return json.loads(ARQUIVO_RESUMO.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        pass
+    return calcular_resumo_da_base()

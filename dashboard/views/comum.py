@@ -14,6 +14,7 @@ ANO_ANTERIOR = ANO_ATUAL - 1
 
 # Abas do painel: (nome da rota em urls.py, título no menu, pergunta que a aba responde)
 ABAS = [
+    ("inicio", "Início", "O que é o painel"),
     ("index", "Panorama", "Qual é a situação?"),
     ("prioridades", "Onde agir", "Onde e quando agir?"),
     ("por_que", "Por quê", "O que faz os acidentes matarem?"),
@@ -84,7 +85,9 @@ def mostrar(request, aba, f, contexto):
         **f,
         **contexto,
         "aba": aba,
-        "abas": [{"titulo": titulo, "pergunta": pergunta, "url": link(f, nome), "ativa": nome == aba}
+        # o Início não leva filtros (com filtro, o endereço "/" vai para o Panorama)
+        "abas": [{"titulo": titulo, "pergunta": pergunta, "ativa": nome == aba,
+                  "url": reverse(nome) if nome == "inicio" else link(f, nome)}
                  for nome, titulo, pergunta in ABAS],
         "etiquetas": etiquetas_de_filtro(f, aba),
         "plotly_js": graficos.PLOTLY_JS,

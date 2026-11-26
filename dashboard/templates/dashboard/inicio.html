@@ -1,0 +1,114 @@
+{% extends "dashboard/base.html" %}
+{% block titulo %}Início{% endblock %}
+
+{% block barra_filtros %}{% endblock %}
+
+{% block conteudo %}
+    <!-- APRESENTAÇÃO + ENTRADA PRINCIPAL (Paraíba) -->
+    <section class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div class="cartao lg:col-span-3 flex flex-col justify-center">
+            <p class="font-titulo text-xs font-bold uppercase tracking-wide text-pm-vermelho-escuro">Apoio à decisão · Polícia Militar da Paraíba</p>
+            <h2 class="mt-2 font-titulo text-2xl sm:text-3xl font-black leading-tight text-pm-preto">
+                Onde, quando e por que acontecem os acidentes nas rodovias federais
+            </h2>
+            <p class="mt-3 text-base leading-relaxed text-pm-preto/80">
+                O painel organiza os acidentes registrados pela Polícia Rodoviária Federal para ajudar a
+                <b>planejar o policiamento</b>, <b>priorizar trechos</b>, <b>encaminhar problemas da via</b> aos órgãos
+                responsáveis e <b>acompanhar os resultados</b> das ações.
+            </p>
+            <p class="mt-4 text-sm text-pm-cinza">
+                Dados de {{ primeiro_ano }} a {{ ano_atual }} · {{ ano_atual }} com os meses já publicados (até {{ ultimo_mes_extenso }}) · fonte: PRF
+            </p>
+        </div>
+
+        <div class="lg:col-span-2 rounded-md bg-pm-preto p-6 text-white shadow-sm">
+            <p class="font-titulo text-xs font-bold uppercase tracking-wide text-pm-cinza-claro">Começar pela Paraíba</p>
+            <div class="mt-3 space-y-2">
+                <a href="{{ link_pb }}" class="flex items-center justify-between rounded bg-pm-vermelho px-4 py-3 font-titulo text-base font-bold hover:bg-pm-vermelho-escuro">
+                    Ver a Paraíba <span aria-hidden="true">→</span>
+                </a>
+                <a href="{{ link_onde_agir_pb }}" class="flex items-center justify-between rounded border border-white/30 px-4 py-2.5 font-titulo text-sm font-bold hover:border-white hover:bg-white/10">
+                    Onde agir na Paraíba <span aria-hidden="true">→</span>
+                </a>
+                <a href="{{ link_acompanhar_pb }}" class="flex items-center justify-between rounded border border-white/30 px-4 py-2.5 font-titulo text-sm font-bold hover:border-white hover:bg-white/10">
+                    Metas e resultados da Paraíba <span aria-hidden="true">→</span>
+                </a>
+            </div>
+            <form method="get" action="{{ link_brasil }}" class="mt-5 border-t border-white/20 pt-4">
+                <label for="outro-estado" class="block font-titulo text-xs font-bold uppercase tracking-wide text-pm-cinza-claro">Outro estado</label>
+                <div class="mt-1.5 flex gap-2">
+                    <select id="outro-estado" name="uf" class="w-full rounded border border-white/30 bg-pm-preto px-3 py-2 text-sm text-white focus:border-pm-vermelho focus:outline-none">
+                        {% for nome, sigla in estados %}
+                        <option value="{{ sigla }}">{{ nome }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="rounded bg-white px-3 py-2 font-titulo text-sm font-bold text-pm-preto hover:bg-pm-cinza-claro">Ir</button>
+                </div>
+                <a href="{{ link_brasil }}" class="mt-3 inline-block text-sm text-pm-cinza-claro underline decoration-pm-vermelho underline-offset-4 hover:text-white">ou ver o Brasil inteiro</a>
+            </form>
+        </div>
+    </section>
+
+    <!-- O QUE EXISTE NO SITE: um cartão por aba -->
+    <section>
+        <h2 class="titulo-secao">O que você encontra no painel</h2>
+        <p class="subtitulo">Cada aba responde a uma pergunta. Os botões abrem a aba já filtrada para a Paraíba.</p>
+        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {% for c in cartoes %}
+            <article class="flex flex-col rounded-md border border-pm-cinza-claro/70 border-t-4 border-t-pm-preto bg-white p-4 shadow-sm hover:border-t-pm-vermelho">
+                <h3 class="font-titulo text-base font-black text-pm-preto">{{ c.titulo }}</h3>
+                <p class="text-sm font-bold text-pm-vermelho-escuro">{{ c.pergunta }}</p>
+                <ul class="mt-3 flex-1 space-y-1.5 text-sm text-pm-preto/80">
+                    {% for item in c.itens %}
+                    <li class="flex gap-2"><span class="mt-2 h-1 w-1 shrink-0 rounded-full bg-pm-vermelho" aria-hidden="true"></span><span>{{ item }}</span></li>
+                    {% endfor %}
+                </ul>
+                <div class="mt-4 flex items-center justify-between gap-2">
+                    <a href="{{ c.link_pb }}" class="rounded bg-pm-preto px-3 py-1.5 font-titulo text-xs font-bold text-white hover:bg-pm-vermelho">Abrir · Paraíba</a>
+                    <a href="{{ c.link_brasil }}" class="text-xs text-pm-cinza underline underline-offset-2 hover:text-pm-vermelho">Brasil</a>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- COMO USAR + FICHA DO TRECHO -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="cartao lg:col-span-2">
+            <h2 class="titulo-secao">Como usar em três passos</h2>
+            <ol class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <li class="flex gap-3">
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pm-vermelho font-titulo text-sm font-black text-white">1</span>
+                    <span class="text-sm"><b>Escolha o recorte</b><br><span class="text-pm-preto/80">Na barra do topo, clique em <i>Editar filtros</i>: estado, município, rodovia, gravidade e período.</span></span>
+                </li>
+                <li class="flex gap-3">
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pm-vermelho font-titulo text-sm font-black text-white">2</span>
+                    <span class="text-sm"><b>Escolha a pergunta</b><br><span class="text-pm-preto/80">Cada aba responde a uma pergunta e se divide em subabas. Os filtros valem em todas.</span></span>
+                </li>
+                <li class="flex gap-3">
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pm-vermelho font-titulo text-sm font-black text-white">3</span>
+                    <span class="text-sm"><b>Leve para a decisão</b><br><span class="text-pm-preto/80">Abra a ficha de um trecho e imprima, baixe o CSV ou use <i>Copiar link</i> para enviar a visão a outra pessoa.</span></span>
+                </li>
+            </ol>
+        </div>
+        <div class="cartao border-l-4 border-l-pm-vermelho flex flex-col">
+            <h2 class="titulo-secao">Ficha do trecho</h2>
+            <p class="mt-2 flex-1 text-sm text-pm-preto/80">
+                Tudo sobre um trecho de 10 km em uma página: números, tendência, <b>recomendações</b>, escala sugerida e causas,
+                pronta para imprimir ou salvar em PDF para a reunião de planejamento.
+            </p>
+            <a href="{{ link_ficha_pb }}" class="mt-4 self-start rounded bg-pm-vermelho px-4 py-2 font-titulo text-sm font-bold text-white hover:bg-pm-vermelho-escuro">Ver os trechos mais graves da Paraíba</a>
+        </div>
+    </section>
+
+    <!-- SOBRE OS DADOS -->
+    <section class="cartao">
+        <h2 class="titulo-secao">Sobre os dados</h2>
+        <dl class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-4 text-sm">
+            <div><dt class="font-bold">Fonte</dt><dd class="text-pm-preto/80">Dados abertos da Polícia Rodoviária Federal (arquivos datatran, um registro por acidente).</dd></div>
+            <div><dt class="font-bold">Período</dt><dd class="text-pm-preto/80">{{ primeiro_ano }} a {{ ano_atual }}. Em {{ ano_atual }}, só os meses já publicados ({{ periodo_atual }}); as comparações com anos anteriores usam os mesmos meses.</dd></div>
+            <div><dt class="font-bold">Abrangência</dt><dd class="text-pm-preto/80">Só rodovias federais (BRs). Mortes registradas no local do acidente; óbitos posteriores no hospital podem não aparecer.</dd></div>
+            <div><dt class="font-bold">Indicadores</dt><dd class="text-pm-preto/80">Letalidade (mortos a cada 100 acidentes) e gravidade UPS, que pesa mais os acidentes com mortes. Veja o significado de cada um abaixo.</dd></div>
+        </dl>
+    </section>
+{% endblock %}

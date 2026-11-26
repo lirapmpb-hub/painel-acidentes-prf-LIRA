@@ -13,7 +13,9 @@ def antiga(nova):
 # em_cache: a página pronta fica guardada na memória (ver cache_paginas.py).
 # O download em CSV não entra no cache, porque pode ser grande.
 urlpatterns = [
-    path("", em_cache(views.index), name="index"),
+    # Página inicial (sem dados). Com filtros na URL (links antigos), vai para o Panorama.
+    path("", em_cache(views.inicio), name="inicio"),
+    path("panorama/", em_cache(views.index), name="index"),
     path("onde-agir/", em_cache(views.prioridades), name="prioridades"),
     path("por-que/", em_cache(views.por_que), name="por_que"),
     path("acompanhar/", em_cache(views.acompanhar), name="acompanhar"),

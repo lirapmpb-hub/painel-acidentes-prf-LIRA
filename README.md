@@ -4,9 +4,11 @@ Painel web com os acidentes registrados pela Polícia Rodoviária Federal (PRF) 
 
 O painel é voltado para a tomada de decisão: responde **onde, quando e o que fazer**. Os filtros (estado, município, rodovia, gravidade, período e avançados) ficam numa barra fixa no topo, e o painel tem cinco abas, cada uma respondendo a uma pergunta:
 
+A **página inicial** (`/`) apresenta o painel e o que existe em cada aba, com a Paraíba como entrada principal, sem carregar os dados de acidentes. Endereços antigos com filtro (`/?uf=PB`) levam ao Panorama.
+
 | Aba | Pergunta | O que mostra |
 | --- | --- | --- |
-| Panorama | Qual é a situação? | Resumo para decisão, totais com variação sobre o ano anterior, evolução mensal, mapa, dia e hora, tipos e rodovias |
+| Panorama (`/panorama/`) | Qual é a situação? | Resumo para decisão, totais com variação sobre o ano anterior, evolução mensal, mapa, dia e hora, tipos e rodovias |
 | Onde agir | Onde e quando agir? | Trechos priorizados pela gravidade (UPS) com tendência, mapa de calor da gravidade, sugestão de escala, causas por quem pode agir, perfil da BR e ranking completo dos trechos |
 | Por quê | O que faz os acidentes matarem? | Condições da via e do ambiente, causas, tipos de acidente, vítimas e veículos |
 | Acompanhar | Estamos melhorando? | Meta de redução, antes e depois de uma ação e comparação entre os anos |

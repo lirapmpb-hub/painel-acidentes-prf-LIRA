@@ -19,14 +19,14 @@ class PaginasTest(SimpleTestCase):
     """Todas as abas abrem, com e sem filtros, sem erro em nenhum gráfico."""
 
     URLS = [
-        "/", "/?uf=PB", "/?uf=PB&municipio=JOAO%20PESSOA",
+        "/panorama/", "/panorama/?uf=PB", "/panorama/?uf=PB&municipio=JOAO%20PESSOA",
         "/onde-agir/", "/onde-agir/?uf=PB&br=230", "/onde-agir/?uf=PB&br=230&ordem=indice",
         "/onde-agir/?uf=PB&br=230&trecho=20",
         "/por-que/", "/por-que/?uf=PB&classificacao=Com%20V%C3%ADtimas%20Fatais",
         "/acompanhar/", "/acompanhar/?uf=PB&indicador=ups&meta=20&intervencao=2025-03&janela=6",
         "/estrutura/", "/estrutura/?ordem=mortos",
         "/ficha/", "/ficha/?uf=PB&br=230&trecho=20",
-        "/?uf=AC&clima=Neve",  # filtro sem nenhum acidente
+        "/panorama/?uf=AC&clima=Neve",  # filtro sem nenhum acidente
     ]
 
     def setUp(self):
@@ -41,8 +41,21 @@ class PaginasTest(SimpleTestCase):
                 self.assertNotIn("Erro ao montar este gráfico", html)
                 self.assertIn("Polícia Militar da Paraíba", html)
 
+    def test_pagina_inicial(self):
+        resposta = self.client.get("/")
+        self.assertEqual(resposta.status_code, 200)
+        html = resposta.content.decode()
+        self.assertIn("Ver a Paraíba", html)
+        self.assertIn('href="/panorama/?uf=PB"', html)
+        self.assertNotIn("cdn.plot.ly", html)  # a página inicial não carrega gráficos
+
+    def test_endereco_antigo_com_filtro_vai_para_o_panorama(self):
+        resposta = self.client.get("/?uf=PB&br=230")
+        self.assertEqual(resposta.status_code, 302)
+        self.assertEqual(resposta["Location"], "/panorama/?uf=PB&br=230")
+
     def test_cada_subaba_tem_sua_parte(self):
-        for url in ["/?uf=PB", "/onde-agir/?uf=PB&br=230", "/por-que/?uf=PB", "/acompanhar/?uf=PB"]:
+        for url in ["/panorama/?uf=PB", "/onde-agir/?uf=PB&br=230", "/por-que/?uf=PB", "/acompanhar/?uf=PB"]:
             with self.subTest(url=url):
                 html = self.client.get(url).content.decode()
                 links = re.findall(r'data-subaba-link="([^"]+)"', html)
@@ -59,9 +72,9 @@ class PaginasTest(SimpleTestCase):
                 self.assertEqual(resposta["Location"], nova + "?uf=PB&br=230")
 
     def test_cache_atende_get_e_head_comprimidos(self):
-        self.client.get("/?uf=PB")
+        self.client.get("/panorama/?uf=PB")
         for metodo in (self.client.get, self.client.head):
-            resposta = metodo("/?uf=PB", HTTP_ACCEPT_ENCODING="gzip")
+            resposta = metodo("/panorama/?uf=PB", HTTP_ACCEPT_ENCODING="gzip")
             self.assertEqual(resposta.status_code, 200)
             self.assertEqual(resposta["Content-Encoding"], "gzip")
 
@@ -82,15 +95,15 @@ class FiltrosTest(SimpleTestCase):
         return [v for v in re.findall(r'<option value="([^"]*)"', bloco) if v]
 
     def test_rodovias_do_municipio(self):
-        html = self.client.get("/?uf=PB&municipio=ITAPORANGA").content.decode()
+        html = self.client.get("/panorama/?uf=PB&municipio=ITAPORANGA").content.decode()
         self.assertEqual(self.opcoes(html, "br"), ["361"])
 
     def test_combinacao_impossivel_volta_para_todas(self):
-        html = self.client.get("/?uf=PB&municipio=ITAPORANGA&br=104").content.decode()
+        html = self.client.get("/panorama/?uf=PB&municipio=ITAPORANGA&br=104").content.decode()
         self.assertNotIn('value="104" selected', html)
 
     def test_municipios_da_rodovia(self):
-        html = self.client.get("/?uf=PB&br=361").content.decode()
+        html = self.client.get("/panorama/?uf=PB&br=361").content.decode()
         municipios = self.opcoes(html, "municipio")
         self.assertIn("ITAPORANGA", municipios)
         self.assertNotIn("JOAO PESSOA", municipios)
