@@ -1,0 +1,284 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if atual %}{{ atual.menu }} · {% endif %}Painel de Acidentes · {{ lugar }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: Inter, Arial, sans-serif; background: #F6F7F9; color: #1E293B; }
+    .azul { background-color: #0F2540; }
+    .texto-azul { color: #0F2540; }
+    .dourado { color: #B8901C; }
+    .linha-dourada { background: linear-gradient(90deg, #C9A227, #E3C766, #C9A227); }
+
+    /* cartões leves: sem borda pesada, sombra sutil */
+    .cartao { background: white; border-radius: 14px; padding: 1.5rem;
+              box-shadow: 0 1px 2px rgba(15, 37, 64, .06), 0 1px 1px rgba(15, 37, 64, .03); }
+    .rotulo { font-size: .7rem; font-weight: 600; letter-spacing: .08em;
+              text-transform: uppercase; color: #64748B; }
+    .numero { font-size: 2.1rem; font-weight: 700; line-height: 1.1; letter-spacing: -.02em;
+              font-variant-numeric: tabular-nums; }
+
+    /* filtros compactos */
+    .campo { border: 1px solid #E2E8F0; border-radius: 8px; padding: .45rem .7rem;
+             font-size: .875rem; background: #F8FAFC; }
+    .campo:focus { outline: 2px solid #C9A227; outline-offset: 1px; }
+    .botao { background: #0F2540; color: white; border-radius: 8px; padding: .5rem 1.1rem;
+             font-size: .875rem; font-weight: 600; }
+    .botao:hover { background: #1B3A5E; }
+
+    /* abas */
+    .aba { padding: .9rem 1rem; font-size: .85rem; font-weight: 500; color: #94A3B8;
+           border-bottom: 2px solid transparent; white-space: nowrap; transition: color .15s; }
+    .aba:hover { color: white; }
+    .aba-ativa { color: white; font-weight: 600; border-bottom-color: #C9A227; }
+
+    /* frase "o que o gráfico sinaliza" */
+    .sinal { border-left: 3px solid #C9A227; padding: .15rem 0 .15rem .9rem;
+             font-size: .95rem; line-height: 1.55; color: #334155; }
+    .sinal b { color: #0F2540; font-weight: 600; }
+
+    /* cartões de resumo clicáveis na página principal */
+    .resumo { transition: transform .15s, box-shadow .15s; }
+    .resumo:hover { transform: translateY(-2px);
+                    box-shadow: 0 8px 24px rgba(15, 37, 64, .10); }
+    .resumo:hover .seta { transform: translateX(3px); }
+    .seta { transition: transform .15s; display: inline-block; }
+    /* seletor "Ver por" */
+    .seletor { display: inline-flex; background: #F1F5F9; border-radius: 9px; padding: 3px; }
+    .seletor input { display: none; }
+    .seletor span { padding: .35rem .85rem; border-radius: 7px; font-size: .85rem;
+                    color: #64748B; cursor: pointer; font-weight: 500; }
+    .seletor input:checked + span { background: white; color: #0F2540; font-weight: 600;
+                                    box-shadow: 0 1px 2px rgba(15, 37, 64, .12); }
+    .numero-aba { width: 1.9rem; height: 1.9rem; border-radius: 999px; background: #FBF5E2;
+                  color: #9A7714; font-weight: 700; font-size: .85rem;
+                  display: inline-flex; align-items: center; justify-content: center; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- CABEÇALHO INSTITUCIONAL -->
+  <header class="bg-white">
+    <div class="max-w-6xl mx-auto px-6 py-5 flex items-center gap-6">
+      <img src="{% static 'painel/brasao_pmpb.png' %}" alt="Brasão da PMPB"
+           class="h-16 w-auto" onerror="this.style.visibility='hidden'">
+      <div class="flex-1 text-center leading-snug">
+        <p class="text-[11px] tracking-[.25em] text-slate-500">ESTADO DA PARAÍBA</p>
+        <p class="text-base md:text-lg font-bold texto-azul tracking-wide">POLÍCIA MILITAR DA PARAÍBA</p>
+        <p class="text-xs md:text-sm font-medium text-slate-600">Academia de Polícia Militar do Cabo Branco</p>
+        <p class="text-[11px] tracking-wider text-slate-500 uppercase">Curso de Formação de Oficiais</p>
+      </div>
+      <img src="{% static 'painel/brasao_apmcb.png' %}" alt="Brasão da APMCB"
+           class="h-16 w-auto" onerror="this.style.visibility='hidden'">
+    </div>
+    <div class="linha-dourada h-[3px]"></div>
+
+    <div class="azul text-white">
+      <div class="max-w-6xl mx-auto px-6 pt-6 pb-1 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p class="text-[11px] tracking-[.2em] uppercase dourado" style="color:#E3C766">Painel analítico</p>
+          <h1 class="text-2xl md:text-3xl font-bold tracking-tight mt-1">Acidentes nas Rodovias Federais</h1>
+          <p class="text-sm text-slate-300 mt-1">{{ lugar }} · {{ periodo }}</p>
+        </div>
+        <div class="text-xs text-slate-400 md:text-right leading-relaxed">
+          <p>Elaboração</p>
+          <p class="text-slate-200">CAD PM EDUARDO · CAD PM MATEUS · CAD PM SILVA</p>
+        </div>
+      </div>
+
+      <!-- MENU DE ABAS (os filtros escolhidos acompanham a troca de aba) -->
+      <nav class="max-w-6xl mx-auto px-3 mt-3 flex overflow-x-auto">
+        <a href="{% url 'inicio' %}?{{ consulta }}" class="aba {% if aba == 'inicio' %}aba-ativa{% endif %}">Visão geral</a>
+        {% for a in abas %}
+        <a href="{% url 'aba' a.slug %}?{{ consulta }}" class="aba {% if aba == a.slug %}aba-ativa{% endif %}">{{ a.menu }}</a>
+        {% endfor %}
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto w-full px-6 py-8 space-y-6 flex-1">
+
+    <!-- FILTROS (valem para todas as abas) -->
+    <form method="get" class="cartao !py-4 flex flex-wrap items-center gap-x-5 gap-y-3">
+      <span class="rotulo">Filtros</span>
+      <label class="flex items-center gap-2 text-sm text-slate-600">UF
+        <select name="uf" class="campo" onchange="this.form.municipio.value=''; this.form.submit()">
+          <option value="">Brasil</option>
+          {% for u in ufs %}
+          <option value="{{ u }}" {% if u == uf %}selected{% endif %}>{{ u }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="flex items-center gap-2 text-sm text-slate-600">Município
+        {% if uf %}
+        <select name="municipio" class="campo" onchange="this.form.submit()">
+          <option value="">Todos</option>
+          {% for m in municipios %}
+          <option value="{{ m }}" {% if m == municipio %}selected{% endif %}>{{ m|title }}</option>
+          {% endfor %}
+        </select>
+        {% else %}
+        <select name="municipio" class="campo" disabled>
+          <option value="">Escolha uma UF</option>
+        </select>
+        {% endif %}
+      </label>
+      <label class="flex items-center gap-2 text-sm text-slate-600">De
+        <select name="mes_ini" class="campo" onchange="this.form.submit()">
+          {% for n, nome in meses %}
+          <option value="{{ n }}" {% if n == mes_ini %}selected{% endif %}>{{ nome }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="flex items-center gap-2 text-sm text-slate-600">até
+        <select name="mes_fim" class="campo" onchange="this.form.submit()">
+          {% for n, nome in meses %}
+          <option value="{{ n }}" {% if n == mes_fim %}selected{% endif %}>{{ nome }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <div class="flex items-center gap-2 text-sm text-slate-600">Ver por
+        <div class="seletor">
+          {% for chave, m in medidas.items %}
+          <label><input type="radio" name="medida" value="{{ chave }}" {% if chave == medida %}checked{% endif %}
+                 onchange="this.form.submit()"><span>{{ m.nome }}</span></label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="flex items-center gap-4 ml-auto">
+        <a href="?" class="text-sm text-slate-500 hover:text-slate-800">Limpar</a>
+        <button type="submit" class="botao">Aplicar</button>
+      </div>
+    </form>
+
+    <!-- INDICADORES -->
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="cartao">
+        <p class="rotulo">Acidentes</p>
+        <p class="numero texto-azul mt-2">{{ kpi_acidentes }}</p>
+        <p class="text-xs text-slate-400 mt-1">registrados pela PRF</p>
+        {% if br %}<p class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">{{ br.acidentes }}</p>{% endif %}
+        {% if br.uf_acidentes %}<p class="text-xs text-slate-500 mt-0.5">{{ br.uf_acidentes }}</p>{% endif %}
+      </div>
+      <div class="cartao">
+        <p class="rotulo">Mortos</p>
+        <p class="numero mt-2" style="color:#B42318">{{ kpi_mortos }}</p>
+        <p class="text-xs text-slate-400 mt-1">vítimas fatais</p>
+        {% if br %}<p class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">{{ br.mortos }}</p>{% endif %}
+        {% if br.uf_mortos %}<p class="text-xs text-slate-500 mt-0.5">{{ br.uf_mortos }}</p>{% endif %}
+      </div>
+      <div class="cartao">
+        <p class="rotulo">Feridos</p>
+        <p class="numero texto-azul mt-2">{{ kpi_feridos }}</p>
+        <p class="text-xs text-slate-400 mt-1">dos quais {{ kpi_graves }} graves</p>
+        {% if br %}<p class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">{{ br.feridos }}</p>{% endif %}
+        {% if br.uf_feridos %}<p class="text-xs text-slate-500 mt-0.5">{{ br.uf_feridos }}</p>{% endif %}
+      </div>
+      <div class="cartao">
+        <p class="rotulo">Índice de gravidade</p>
+        <p class="numero texto-azul mt-2">{{ kpi_gravidade }}</p>
+        <p class="text-xs text-slate-400 mt-1">mortos a cada 100 acidentes</p>
+        {% if br %}<p class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">{{ br.gravidade }}</p>{% endif %}
+        {% if br.uf_gravidade %}<p class="text-xs text-slate-500 mt-0.5">{{ br.uf_gravidade }}</p>{% endif %}
+      </div>
+    </section>
+
+    {% if sem_dados %}
+    <section class="cartao text-center text-slate-500 py-12">
+      Nenhum acidente registrado para os filtros selecionados.
+    </section>
+
+    {% elif aba == 'inicio' %}
+    <!-- VISÃO GERAL -->
+    <section class="cartao md:flex gap-8 items-start">
+      <h2 class="text-lg font-semibold texto-azul md:w-56 shrink-0">Sobre o painel</h2>
+      <p class="text-sm text-slate-600 leading-relaxed mt-2 md:mt-0">
+        Este painel analisa os acidentes registrados pela Polícia Rodoviária Federal nas rodovias
+        federais em 2026 para responder a uma pergunta: <b class="text-slate-800">onde, quando e por que
+        acontecem os acidentes mais graves?</b> Escolha a UF e o período nos filtros. Cada cartão abaixo
+        resume uma análise; clique nele para abrir o gráfico completo.
+      </p>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {% for r in resumo %}
+      <a href="{% url 'aba' r.slug %}?{{ consulta }}" class="cartao resumo flex flex-col gap-4">
+        <div class="flex items-start gap-3">
+          <span class="numero-aba shrink-0">{{ forloop.counter }}</span>
+          <div>
+            <h3 class="font-semibold texto-azul">{{ r.titulo|slice:"3:" }}</h3>
+            <p class="text-xs text-slate-500 mt-0.5">{{ r.descricao }}</p>
+          </div>
+        </div>
+        <p class="sinal flex-1">{{ r.frase }}</p>
+        <span class="text-sm font-semibold texto-azul">Ver gráfico <span class="seta">→</span></span>
+      </a>
+      {% endfor %}
+    </section>
+
+    <!-- METODOLOGIA E LIMITAÇÕES (só na Visão geral) -->
+    <section class="cartao md:flex gap-8 items-start">
+      <h2 class="text-lg font-semibold texto-azul md:w-56 shrink-0">Metodologia e limitações</h2>
+      <div class="text-sm text-slate-600 leading-relaxed mt-2 md:mt-0 space-y-3">
+        <p><b class="text-slate-800">Fonte:</b> Polícia Rodoviária Federal (PRF), dados abertos de acidentes,
+          arquivo datatran 2026 ({{ total_registros }} acidentes registrados).</p>
+        <p><b class="text-slate-800">Período coberto:</b> de {{ data_inicio }} a {{ data_fim }}
+          (primeira e última data presentes na base).</p>
+        <p><b class="text-slate-800">Índice de gravidade:</b> mortos ÷ acidentes × 100, ou seja,
+          quantas pessoas morreram a cada 100 acidentes.</p>
+        <div>
+          <p><b class="text-slate-800">Limitações:</b></p>
+          <ul class="list-disc pl-5 mt-1 space-y-1">
+            <li>Os números são absolutos: não há taxa por frota de veículos ou por população, então
+              estados maiores tendem a aparecer com mais casos.</li>
+            <li>A base cobre apenas as rodovias federais; acidentes em rodovias estaduais e vias
+              urbanas não estão incluídos.</li>
+            <li>O ano de 2026 está incompleto: a base termina em {{ data_fim }}.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    {% else %}
+    <!-- UMA ABA: o gráfico em tamanho grande -->
+    <section class="cartao space-y-5">
+      <div class="flex items-start gap-3">
+        <span class="numero-aba shrink-0">{{ atual.titulo|slice:":1" }}</span>
+        <div>
+          <h2 class="text-xl font-semibold texto-azul">{{ atual.titulo|slice:"3:" }}</h2>
+          <p class="text-sm text-slate-500 mt-0.5">{{ atual.descricao }}</p>
+        </div>
+      </div>
+      <p class="sinal"><b>O que o gráfico sinaliza:</b> {{ frase }}</p>
+      <div class="pt-2">{{ grafico|safe }}</div>
+      {% if nota %}<p class="text-xs text-slate-500">{{ nota }}</p>{% endif %}
+      {% if faixas %}
+      <!-- RESUMO POR FAIXA DO DIA (só na aba Dia e horário) -->
+      <div>
+        <p class="rotulo mb-3">Resumo por faixa do dia · {{ nome_medida }}</p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {% for f in faixas %}
+          <div class="rounded-lg bg-slate-50 px-4 py-3">
+            <p class="text-sm font-semibold texto-azul">{{ f.nome }} <span class="text-xs font-normal text-slate-400">{{ f.horas }}</span></p>
+            <p class="text-lg font-bold texto-azul mt-1">{{ f.percentual }}%</p>
+            <p class="text-xs text-slate-500">{{ f.total }}</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      <p class="text-xs text-slate-500 border-t border-slate-100 pt-4"><b class="text-slate-600">Como ler:</b> {{ atual.como_ler }}</p>
+    </section>
+    {% endif %}
+  </main>
+
+  <footer class="text-center text-xs text-slate-400 py-6 leading-relaxed">
+    Polícia Militar da Paraíba · Academia de Polícia Militar do Cabo Branco · Curso de Formação de Oficiais<br>
+    Fonte dos dados: PRF, dados abertos de acidentes (datatran 2026), jan. a set. de 2026 · Índice de gravidade = mortos ÷ acidentes × 100
+  </footer>
+</body>
+</html>
